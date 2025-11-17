@@ -1,0 +1,161 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "102",
+        "name": "Falck Næstved",
+        "address": "Holsted Park 1, 4700 Næstved"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [11.773767, 55.249532]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "183",
+        "name": "Falck Farum",
+        "address": "Ryttermarken 13, 3520 Farum"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [12.358807, 55.820554]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "330",
+        "name": "Falck Herning",
+        "address": "H.P.Hansens Vej 112, 7400 Herning"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [8.942126, 56.144196]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "106",
+        "name": "Falck Gladsaxe",
+        "address": "Vandtårnsvej 59, 2860 Søborg"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [12.493694, 55.735573]
+      }
+    },
+     {
+      "type": "Feature",
+      "properties": {
+        "id": "166",
+        "name": "Falck Rønne",
+        "address": "Ved Lunden 9, 3700 Rønne"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14.714615, 55.095025]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "515",
+        "name": "Falck Dalum",
+        "address": "Sivlandvænget 2, 5260 Odense s"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.404940, 55.354363]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "110",
+        "name": "Falck Ringsted",
+        "address": "Klosterparks Alle 30, 4100 Ringsted"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [11.785372, 55.453341]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "157",
+        "name": "Falck Taastrup",
+        "address": "Øtoftegårdsvej 4, 2630 Taastrup"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [12.280415, 55.655361]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "301",
+        "name": "Falck Højbjerg",
+        "address": "Michael Drewsens Vej 5A, 8270 Højbjerg"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [10.157105, 56.106513]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "105",
+        "name": "Falck Tårnby",
+        "address": "LøjteGårdsvej 161, 2770 Kastrup"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [12.603185, 55.623104]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "423",
+        "name": "Falck Fredericia",
+        "address": "Neptunvej 1, 7000 Fredericia"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [9.712889, 55.568673]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "201",
+        "name": "Falck Ålborg",
+        "address": "Håndværkervej 27, 9000 Aalborg"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [9.926837, 57.031789]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "107",
+        "name": "Falck Glostrup",
+        "address": "Naverland 10, 2600 Glostrup"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [12.382133, 55.679560]
+      }
+    }
+  ]
+}
