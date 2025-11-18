@@ -16,6 +16,23 @@ function convertToWGS84(x, y) {
 }
 
 /***************************************************
+ * Custom Places
+ *
+ * Nogle steder, fx mindre bakkedrag eller fredede fortidsminder,
+ * figurerer ikke som officielle stednavne i Dataforsyningens søge-API.
+ * Hvis man ønsker at kunne finde disse via søgefeltet, kan de
+ * tilføjes til dette array. Hvert element indeholder navnet på
+ * stedet og dets koordinater i WGS84 (latitude, longitude).
+ */
+var customPlaces = [
+  {
+    navn: "Tellerup Bjerge",
+    coords: [55.38627, 9.92760]
+  }
+  // Fremtidige specialsteder kan tilføjes her
+];
+
+/***************************************************
  * Hjælpefunktion til at kopiere tekst til clipboard
  ***************************************************/
 function copyToClipboard(str) {
@@ -64,10 +81,16 @@ function getSortPriority(item, query) {
     text = item.navn || "";
   } else if (item.type === "strandpost") {
     text = item.tekst || "";
+  } else if (item.type === "navngivenvej") {
+    // navngivne veje bruger 'navn' som tekstfelt
+    text = item.navn || "";
+  } else if (item.type === "custom") {
+    // custom places bruger 'navn' som primært tekstfelt
+    text = item.navn || "";
   }
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
-  
+
   if (lowerText === lowerQuery) {
     return 0; // Perfekt match
   } else if (lowerText.startsWith(lowerQuery)) {
@@ -980,21 +1003,36 @@ function doSearchStrandposter(query) {
 }
 
 /***************************************************
- * doSearch => kombinerer adresser, stednavne og strandposter
+ * doSearch => kombinerer adresser, stednavne, specialsteder og strandposter
  ***************************************************/
 function doSearch(query, listElement) {
   let addrUrl = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}`;
   let stedUrl = `https://api.dataforsyningen.dk/rest/gsearch/v2.0/stednavn?q=${encodeURIComponent(query)}&limit=100&token=a63a88838c24fc85d47f32cde0ec0144`;
+  // Navngivne veje: søg i officielle vejnavne via Dataforsyningen. Ved at
+  // sætte per_side begrænses antal resultater. Visuelt center returneres
+  // som [lon, lat].
+  let roadUrl = `https://api.dataforsyningen.dk/navngivneveje?q=${encodeURIComponent(query)}&per_side=20`;
   // Kun indlæs strandposter hvis laget er tændt og data er klar
   let strandPromise = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
     : Promise.resolve([]);
+  
+  // Specialsteder: filtrer customPlaces efter query
+  let customResults = customPlaces
+    .filter(p => p.navn.toLowerCase().includes(query.toLowerCase()))
+    .map(p => ({
+      type: "custom",
+      navn: p.navn,
+      coords: p.coords
+    }));
+
   Promise.all([
     fetch(addrUrl).then(r => r.json()).catch(err => { console.error("Adresser fejl:", err); return []; }),
     fetch(stedUrl).then(r => r.json()).catch(err => { console.error("Stednavne fejl:", err); return {}; }),
+    fetch(roadUrl).then(r => r.json()).catch(err => { console.error("Navngivne veje fejl:", err); return []; }),
     strandPromise
   ])
-  .then(([addrData, stedData, strandData]) => {
+  .then(([addrData, stedData, roadData, strandData]) => {
     listElement.innerHTML = "";
     searchItems = [];
     searchCurrentIndex = -1;
@@ -1021,14 +1059,22 @@ function doSearch(query, listElement) {
         }));
       }
     }
-    let combined = [...addrResults, ...stedResults, ...strandData];
+    // Navngivne veje resultater (vejnavne)
+    let roadResults = (roadData || []).map(item => ({
+      type: "navngivenvej",
+      navn: item.navn || item.adresseringsnavn || "",
+      id: item.id,
+      visualCenter: item.visueltcenter,
+      bbox: item.bbox
+    }));
+    // Kombiner alle resultater inkl. specialsteder og navngivne veje
+    let combined = [...addrResults, ...stedResults, ...roadResults, ...strandData, ...customResults];
     combined.sort((a, b) => {
-      if (a.type === "stednavn" && b.type === "adresse") {
-        return -1;
-      }
-      if (a.type === "adresse" && b.type === "stednavn") {
-        return 1;
-      }
+      // Prioriter stednavne, navngivne veje og specialsteder over adresser
+      const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom");
+      const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom");
+      if (aIsName && !bIsName) return -1;
+      if (!aIsName && bIsName) return 1;
       return getSortPriority(a, query) - getSortPriority(b, query);
     });
     combined.forEach(obj => {
@@ -1037,7 +1083,8 @@ function doSearch(query, listElement) {
         li.innerHTML = `🛟 ${obj.tekst}`;
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
-      } else if (obj.type === "stednavn") {
+      } else if (obj.type === "stednavn" || obj.type === "custom" || obj.type === "navngivenvej") {
+        // brug pin‑ikon for stednavne, navngivne veje og specialsteder
         li.innerHTML = `📍 ${obj.navn}`;
       }
       li.addEventListener("click", function() {
@@ -1110,6 +1157,48 @@ function doSearch(query, listElement) {
               console.error("Reverse geocoding for strandpost fejlede:", err);
               marker.bindPopup(`<strong>${obj.tekst}</strong><br>(Reverse geocoding fejlede)`).openPopup();
             });
+        } else if (obj.type === "custom") {
+          // specialsteder som Tellerup Bjerge
+          let [lat, lon] = obj.coords;
+          setCoordinateBox(lat, lon);
+          placeMarkerAndZoom([lat, lon], obj.navn);
+          // Reverse geocoding for at vise nærmeste adresse i infoboksen
+          let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+          fetch(revUrl)
+            .then(r => r.json())
+            .then(revData => {
+              updateInfoBox(revData, lat, lon);
+            })
+            .catch(err => console.error("Reverse geocoding fejl for specialsted:", err));
+          listElement.innerHTML = "";
+          listElement.style.display = "none";
+        } else if (obj.type === "navngivenvej") {
+          // Navngiven vej: brug visuelt center til at placere markør
+          let lat, lon;
+          if (Array.isArray(obj.visualCenter) && obj.visualCenter.length === 2) {
+            lon = obj.visualCenter[0];
+            lat = obj.visualCenter[1];
+          } else if (Array.isArray(obj.bbox) && obj.bbox.length === 4) {
+            // hvis visuelt center mangler, brug midtpunkt af bbox
+            const [minLon, minLat, maxLon, maxLat] = obj.bbox;
+            lon = (minLon + maxLon) / 2;
+            lat = (minLat + maxLat) / 2;
+          } else {
+            // fallback: ignorer
+            return;
+          }
+          setCoordinateBox(lat, lon);
+          placeMarkerAndZoom([lat, lon], obj.navn);
+          // Reverse geocoding til nærmeste adresse
+          let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+          fetch(revUrl)
+            .then(r => r.json())
+            .then(revData => {
+              updateInfoBox(revData, lat, lon);
+            })
+            .catch(err => console.error("Reverse geocoding fejl for navngiven vej:", err));
+          listElement.innerHTML = "";
+          listElement.style.display = "none";
         }
       });
       listElement.appendChild(li);
