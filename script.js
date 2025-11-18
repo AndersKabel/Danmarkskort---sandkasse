@@ -1009,9 +1009,10 @@ function doSearch(query, listElement) {
   let addrUrl = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}`;
   let stedUrl = `https://api.dataforsyningen.dk/rest/gsearch/v2.0/stednavn?q=${encodeURIComponent(query)}&limit=100&token=a63a88838c24fc85d47f32cde0ec0144`;
   // Navngivne veje: søg i officielle vejnavne via Dataforsyningen. Ved at
-  // sætte per_side begrænses antal resultater. Visuelt center returneres
-  // som [lon, lat].
-  let roadUrl = `https://api.dataforsyningen.dk/navngivneveje?q=${encodeURIComponent(query)}&per_side=20`;
+  // sætte per_side begrænses antal resultater. For at understøtte
+  // autocomplete/partial matches tilføjes wildcard * efter hvert ord.
+  const queryWithWildcard = query.trim().split(/\s+/).map(w => w + "*").join(" ");
+  let roadUrl = `https://api.dataforsyningen.dk/navngivneveje?q=${encodeURIComponent(queryWithWildcard)}&per_side=20`;
   // Kun indlæs strandposter hvis laget er tændt og data er klar
   let strandPromise = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
@@ -1083,8 +1084,11 @@ function doSearch(query, listElement) {
         li.innerHTML = `🛟 ${obj.tekst}`;
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
-      } else if (obj.type === "stednavn" || obj.type === "custom" || obj.type === "navngivenvej") {
-        // brug pin‑ikon for stednavne, navngivne veje og specialsteder
+      } else if (obj.type === "navngivenvej") {
+        // brug vej‑ikon til navngivne veje
+        li.innerHTML = `🛣️ ${obj.navn}`;
+      } else if (obj.type === "stednavn" || obj.type === "custom") {
+        // brug pin‑ikon for stednavne og specialsteder
         li.innerHTML = `📍 ${obj.navn}`;
       }
       li.addEventListener("click", function() {
