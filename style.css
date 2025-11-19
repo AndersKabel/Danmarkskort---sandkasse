@@ -10,16 +10,13 @@
 }
 
 #search-container {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 400px;
+  /* Fylder hele bredden af sidebar i stedet for at være absolut placeret */
+  width: 100%;
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.9);
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
 }
 
 .flex-row {
@@ -124,15 +121,21 @@
 /* ============================
    INFO-BOKSE
 ============================ */
-#infoContainer {
+#sidebar {
   position: absolute;
-  top: 120px;
+  top: 10px;
   left: 10px;
   width: 400px;
   z-index: 1000;
+  box-sizing: border-box;
+}
+#infoContainer {
+  /* Placeres nu statisk inden i #sidebar og fylder hele bredden */
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* giver luft mellem infoboksene */
+  gap: 10px;
+  margin-top: 10px;
 }
 
 #infoBox {
