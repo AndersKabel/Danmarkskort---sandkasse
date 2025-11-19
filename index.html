@@ -26,9 +26,8 @@
   <div id="map"></div>
 
   <div id="coordinateBox">Klik på kortet for at se koordinater</div>
-  
-  <!-- Container til søgning og info samlet -->
-  <div id="controlPanel">
+    
+  <div id="sidebar">
     <div id="search-container">
       <div class="search-wrapper">
         <input type="text" id="search" placeholder="Søg efter adresse eller sted...">
@@ -45,14 +44,17 @@
           <input type="text" id="vej2" placeholder="Andet vejnavn...">
           <ul id="results-vej2" class="autocomplete-list"></ul>
         </div>
+        <!-- NY KNAP: "Find X" -->
         <button id="findKrydsBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
           Find X
         </button>
       </div>
+      
+      <div id="kildeangivelse"></div>
     </div>
-
+    <!-- InfoContainer nu inden i sidebar for at stakke under søgeboksen -->
     <div id="infoContainer">
-      <!-- Én samlet infobox -->
+      <!-- Én samlet infoboks – alle oplysninger kommer her -->
       <div id="infoBox">
         <div class="info-upper-box">
           <a id="streetviewLink" href="#" target="_blank">Åbn i Google Street View</a>
@@ -64,20 +66,17 @@
         </div>
         <span id="infoCloseBtn" class="close-button">&times;</span>
       </div>
-
       <div id="statsvejInfoBox" class="hidden">
         <div class="info-upper-box"></div>
         <div class="info-lower-box">
           <p id="statsvejInfo"></p>
         </div>
-        <span id="statsvejCloseBtn" class="close-button">&times;</span> 
+        <span id="statsvejCloseBtn" class="close-button">&times;</span>
       </div>
     </div>
-
-    <div id="kildeangivelse"></div>
   </div>
-
-  <!-- Afstandsknapper -->
+      
+  <!-- NYT: Distance Options med knapper -->
   <div id="distanceOptions" class="distance-options">
     <button id="btn10" class="distance-btn">10 km</button>
     <button id="btn25" class="distance-btn">25 km</button>
@@ -90,9 +89,8 @@
 
   <!-- Din egen script-fil -->
   <script src="script.js"></script>
-
-  <!-- Overlay til kommunekode og vejkode -->
+  
+  <!-- Overlay til kommunekode og vejkode (gennemsigtigt designet i CSS) -->
   <div id="kommuneOverlay"></div>
-
 </body>
 </html>
