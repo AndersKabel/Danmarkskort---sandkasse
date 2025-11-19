@@ -132,14 +132,13 @@
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 10px; /* giver luft mellem infoboksene */
 }
 
 #infoBox {
+  /* Info-boksen vises ikke som standard; styres via script */
   display: none;
   position: relative;
-  margin-top: 5px; 
-  left: -10px;
   width: 100%;
   max-width: 400px;
   box-sizing: border-box;
