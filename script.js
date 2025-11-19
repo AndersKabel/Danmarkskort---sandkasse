@@ -19,7 +19,7 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
  */
 
 // TODO: Indsæt din ORS API-nøgle her
-const ORS_API_KEY = "YOUR_ORS_API_KEY_HERE";
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU2ZTA5ODhhNDE5MDQ1MjNiY2QwM2QyZjcyNWViZmU5IiwiaCI6Im11cm11cjY0In0=";
 
 // Lag til at vise ruter fra ORS. Tilføjes til overlayMaps senere.
 var routeLayer = L.layerGroup();
