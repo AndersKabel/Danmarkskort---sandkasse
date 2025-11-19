@@ -11,7 +11,7 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
  *
  * For at tilføje ruteplanlægning baseret på OpenStreetMap-data har vi
  * integreret OpenRouteService (ORS). ORS tilbyder en gratis plan med
- * 2.000 ruteopslag pr. dag og 40 pr. minut【176505938843089†L27-L31】. Før du kan
+ * 2.000 ruteopslag pr. dag og 40 pr. minut:contentReference[oaicite:0]{index=0}. Før du kan
  * anvende tjenesten skal du oprette en gratis konto og hente en API-nøgle.
  * Besøg https://openrouteservice.org/, opret en konto og generér en nøgle
  * under sektionen "API Keys" i din brugerprofil. Indsæt nøglen i
@@ -82,7 +82,7 @@ async function planRouteORS() {
   }
   let [startLat, startLon] = start;
   let [endLat, endLon]     = end;
-  // Konstruér API‑URL. Vi bruger driving-car profil og GeoJSON format for geometri.
+  // Konstruér API-URL. Vi bruger driving-car profil og GeoJSON format for geometri.
   const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${startLon},${startLat}&end=${endLon},${endLat}&geometry_format=geojson`;
   try {
     let resp = await fetch(orsUrl);
@@ -1192,10 +1192,10 @@ function doSearch(query, listElement) {
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
       } else if (obj.type === "navngivenvej") {
-        // brug vej‑ikon til navngivne veje
+        // brug vej-ikon til navngivne veje
         li.innerHTML = `🛣️ ${obj.navn}`;
       } else if (obj.type === "stednavn" || obj.type === "custom") {
-        // brug pin‑ikon for stednavne og specialsteder
+        // brug pin-ikon for stednavne og specialsteder
         li.innerHTML = `📍 ${obj.navn}`;
       }
       li.addEventListener("click", function() {
@@ -1586,7 +1586,7 @@ document.getElementById("btn100").addEventListener("click", function() {
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
 
-  // Tilføj klik‑håndtering til ORS‑ruteplanlægningsknappen, hvis den findes i DOM
+  // Tilføj klik-håndtering til ORS-ruteplanlægningsknappen, hvis den findes i DOM
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
