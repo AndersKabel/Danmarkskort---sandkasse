@@ -19,7 +19,7 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
  */
 
 // TODO: Indsæt din ORS API-nøgle her
-const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU2ZTA5ODhhNDE5MDQ1MjNiY2QwM2QyZjcyNWViZmU5IiwiaCI6Im11cm11cjY0In0=";
+const ORS_API_KEY = "YOUR_ORS_API_KEY_HERE";
 
 // Lag til at vise ruter fra ORS. Tilføjes til overlayMaps senere.
 var routeLayer = L.layerGroup();
@@ -738,24 +738,27 @@ async function updateInfoBox(data, lat, lon) {
     extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Politikreds: ${polititekst}</span>`;
   }
 
-  // Juster placeringen af statsvej-boksen, så den flyttes ned under info-boksen uanset højde
+  // Juster afstanden mellem infoboksen og statsvej-boksen. Da statsvejInfoBox
+  // nu er placeret som et relativt element under infoBox i samme container,
+  // kan vi styre afstanden med margin-top. Vi beregner afstanden mellem
+  // toppen af infoBox og bunden af søgecontaineren (pil 1) og bruger den
+  // som margin mellem boksene. Hvis beregningen fejler, anvendes en
+  // standardværdi på 10px.
   try {
     const infoBoxEl = document.getElementById("infoBox");
     const statsBoxEl = document.getElementById("statsvejInfoBox");
-    if (infoBoxEl && statsBoxEl) {
-      // brug lidt mere afstand mellem boksene (16px)
-      const spacing = 6;
-      // beregn ny top-position relativt til statsBoxEl's offsetParent
-    const infoRect = infoBoxEl.getBoundingClientRect();
-    const parentRect = statsBoxEl.offsetParent?.getBoundingClientRect() ?? { top: 0 };
-    // juster afstanden mellem infoBox og statsvejBox. For at matche
-    // den visuelle afstand mellem søgeboksen og den øverste infoboks
-    // anvender vi en lidt større spacing end tidligere.
-    const newTop = (infoRect.bottom - parentRect.top) + 10; // 10px afstand
-    statsBoxEl.style.top = `${newTop}px`;
+    if (infoBoxEl && statsBoxEl && statsBoxEl.style.display !== "none") {
+      const searchContainer = document.getElementById("search-container");
+      const infoRect = infoBoxEl.getBoundingClientRect();
+      const searchRect = searchContainer?.getBoundingClientRect();
+      let spacingPx = 10;
+      if (searchRect) {
+        spacingPx = Math.max(0, infoRect.top - searchRect.bottom);
+      }
+      statsBoxEl.style.marginTop = `${spacingPx}px`;
     }
   } catch (err) {
-    console.warn('Kunne ikke justere statsvej-boksens placering:', err);
+    console.warn('Kunne ikke justere statsvej-boksens afstand:', err);
   }
 }
 
