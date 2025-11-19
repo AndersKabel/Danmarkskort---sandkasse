@@ -130,6 +130,9 @@
   left: 10px;
   width: 400px;
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 #infoBox {
@@ -217,12 +220,10 @@
 
 /* Statsvej info-boks */
 #statsvejInfoBox {
-  /* Statsvej-info-boksen placeres nu som et relativt element under infoBox
-     i samme container. Afstanden til infoBox styres dynamisk via
-     margin-top som sættes i updateInfoBox() i scriptet. */
   display: none;
   position: relative;
   width: 100%;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.95);
   padding: 10px;
   border-radius: 8px;
