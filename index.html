@@ -62,14 +62,16 @@
         </div>
         <span id="infoCloseBtn" class="close-button">&times;</span>
       </div>
-    </div>
-
-    <div id="statsvejInfoBox" class="hidden">
-      <div class="info-upper-box"></div>
-      <div class="info-lower-box">
-        <p id="statsvejInfo"></p>
+      <!-- StatsvejInfoBox placeres nu her som søskende til infoBox, så afstanden
+           styres via margin-top, og boksen flyttes automatisk ned når infoBox
+           bliver højere eller lavere -->
+      <div id="statsvejInfoBox" class="hidden">
+        <div class="info-upper-box"></div>
+        <div class="info-lower-box">
+          <p id="statsvejInfo"></p>
+        </div>
+        <span id="statsvejCloseBtn" class="close-button">&times;</span> 
       </div>
-      <span id="statsvejCloseBtn" class="close-button">&times;</span> 
     </div>
       
     <div id="kildeangivelse"></div>
@@ -87,7 +89,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
 
   <!-- Din egen script-fil -->
-  <script src="script.js"></script>
+  <script src="updated_script.js"></script>
   
   <!-- Overlay til kommunekode og vejkode (gennemsigtigt designet i CSS) -->
   <div id="kommuneOverlay"></div>
