@@ -217,13 +217,12 @@
 
 /* Statsvej info-boks */
 #statsvejInfoBox {
-  /* Statsvej-info-boksen positioneres dynamisk via JavaScript. Den
-     absolutte position i CSS fjernes for at undgå faste afstande.
-     Top-værdien sættes i updateInfoBox() baseret på højde af infoBox. */
+  /* Statsvej-info-boksen placeres nu som et relativt element under infoBox
+     i samme container. Afstanden til infoBox styres dynamisk via
+     margin-top som sættes i updateInfoBox() i scriptet. */
   display: none;
-  position: absolute;
-  left: 0;
-  width: 380px;
+  position: relative;
+  width: 100%;
   background: rgba(255, 255, 255, 0.95);
   padding: 10px;
   border-radius: 8px;
