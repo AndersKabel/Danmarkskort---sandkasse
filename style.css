@@ -134,8 +134,8 @@
 
 #infoBox {
   display: none;
-  position: absolute;
-  top: 5px; 
+  position: relative;
+  margin-top: 5px; 
   left: -10px;
   width: 100%;
   max-width: 400px;
