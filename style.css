@@ -91,7 +91,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  width: 391px;
+  width: 100%;          /* <-- FØR: 391px, nu følger de boksenes bredde */
   background: white;
   z-index: 2000;
   display: none;
