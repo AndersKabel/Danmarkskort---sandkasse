@@ -737,29 +737,6 @@ async function updateInfoBox(data, lat, lon) {
     // Vis politikreds med større skrifttype og på egen linje
     extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Politikreds: ${polititekst}</span>`;
   }
-
-  // Juster afstanden mellem infoboksen og statsvej-boksen. Da statsvejInfoBox
-  // nu er placeret som et relativt element under infoBox i samme container,
-  // kan vi styre afstanden med margin-top. Vi beregner afstanden mellem
-  // toppen af infoBox og bunden af søgecontaineren (pil 1) og bruger den
-  // som margin mellem boksene. Hvis beregningen fejler, anvendes en
-  // standardværdi på 10px.
-  try {
-    const infoBoxEl = document.getElementById("infoBox");
-    const statsBoxEl = document.getElementById("statsvejInfoBox");
-    if (infoBoxEl && statsBoxEl && statsBoxEl.style.display !== "none") {
-      const searchContainer = document.getElementById("search-container");
-      const infoRect = infoBoxEl.getBoundingClientRect();
-      const searchRect = searchContainer?.getBoundingClientRect();
-      let spacingPx = 10;
-      if (searchRect) {
-        spacingPx = Math.max(0, infoRect.top - searchRect.bottom);
-      }
-      statsBoxEl.style.marginTop = `${spacingPx}px`;
-    }
-  } catch (err) {
-    console.warn('Kunne ikke justere statsvej-boksens afstand:', err);
-  }
 }
 
 /***************************************************
