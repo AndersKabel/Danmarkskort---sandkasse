@@ -746,11 +746,13 @@ async function updateInfoBox(data, lat, lon) {
       // brug lidt mere afstand mellem boksene (16px)
       const spacing = 6;
       // beregn ny top-position relativt til statsBoxEl's offsetParent
-      const infoRect = infoBoxEl.getBoundingClientRect();
-      const parentRect = statsBoxEl.offsetParent?.getBoundingClientRect() ?? { top: 0 };
-      // bottom of infoBox relative to viewport minus offsetParent top gives relative top within parent
-      const newTop = infoRect.bottom - parentRect.top + spacing;
-      statsBoxEl.style.top = `${newTop}px`;
+    const infoRect = infoBoxEl.getBoundingClientRect();
+    const parentRect = statsBoxEl.offsetParent?.getBoundingClientRect() ?? { top: 0 };
+    // juster afstanden mellem infoBox og statsvejBox. For at matche
+    // den visuelle afstand mellem søgeboksen og den øverste infoboks
+    // anvender vi en lidt større spacing end tidligere.
+    const newTop = (infoRect.bottom - parentRect.top) + 10; // 10px afstand
+    statsBoxEl.style.top = `${newTop}px`;
     }
   } catch (err) {
     console.warn('Kunne ikke justere statsvej-boksens placering:', err);
