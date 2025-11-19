@@ -6,6 +6,116 @@ proj4.defs("EPSG:25832", "+proj=utm +zone=32 +ellps=GRS80 +datum=ETRS89 +units=m
 // Cloudflare proxy til VD-reference
 const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
 
+/*
+ * OpenRouteService integration
+ *
+ * For at tilføje ruteplanlægning baseret på OpenStreetMap-data har vi
+ * integreret OpenRouteService (ORS). ORS tilbyder en gratis plan med
+ * 2.000 ruteopslag pr. dag og 40 pr. minut【176505938843089†L27-L31】. Før du kan
+ * anvende tjenesten skal du oprette en gratis konto og hente en API-nøgle.
+ * Besøg https://openrouteservice.org/, opret en konto og generér en nøgle
+ * under sektionen "API Keys" i din brugerprofil. Indsæt nøglen i
+ * konstanten ORS_API_KEY nedenfor.
+ */
+
+// TODO: Indsæt din ORS API-nøgle her
+const ORS_API_KEY = "YOUR_ORS_API_KEY_HERE";
+
+// Lag til at vise ruter fra ORS. Tilføjes til overlayMaps senere.
+var routeLayer = L.layerGroup();
+
+/**
+ * Udtræk et repræsentativt punkt fra en vejgeometri
+ *
+ * Når en vej hentes fra Dataforsyningen returneres geometrien som en
+ * GeoJSON MultiLineString (ofte i EPSG:25832). Vi vælger det første
+ * koordinatsæt som repræsentativt punkt og konverterer det til
+ * WGS84. Dette punkt bruges som start- eller slutpunkt til rute-
+ * planlægning i ORS.
+ *
+ * @param {Object} geometry GeoJSON-objekt med type MultiLineString
+ * @returns {Array|null} Array [lat, lon] i WGS84 eller null
+ */
+function getRepresentativeCoordinate(geometry) {
+  if (!geometry || !Array.isArray(geometry.coordinates)) return null;
+  // Hent første koordinatsæt (kan være nested arrays)
+  let coords = geometry.coordinates;
+  // MultiLineString: array af lines, hver med array af koordinater
+  let firstLine = Array.isArray(coords[0]) ? coords[0] : null;
+  if (!firstLine || firstLine.length === 0) return null;
+  let firstCoord = firstLine[0];
+  if (!firstCoord || firstCoord.length < 2) return null;
+  let x = firstCoord[0];
+  let y = firstCoord[1];
+  // Hvis koordinaterne er i UTM (typisk > 90), konverter til WGS84
+  if (Math.abs(x) > 90 || Math.abs(y) > 90) {
+    let [lat, lon] = convertToWGS84(x, y);
+    return [lat, lon];
+  }
+  // Ellers antag allerede WGS84: [lon, lat]
+  return [firstCoord[1], firstCoord[0]];
+}
+
+/**
+ * Planlæg en rute mellem de to valgte veje ved hjælp af ORS
+ *
+ * Denne funktion anvender de globalt valgte veje (selectedRoad1 og
+ * selectedRoad2) og beregner en rute mellem dem. Den henter et
+ * repræsentativt punkt fra hver vejgeometri, kalder ORS' Directions-
+ * API og tegner den returnerede rute som en polyline på kortet.
+ */
+async function planRouteORS() {
+  if (!selectedRoad1 || !selectedRoad2) {
+    alert("Vælg venligst to veje først (vej 1 og vej 2) før ruteplanlægning.");
+    return;
+  }
+  if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
+    alert("ORS API-nøgle mangler. Indsæt din nøgle i konstanten ORS_API_KEY.");
+    return;
+  }
+  // Udtræk start- og slutkoordinater
+  let start = getRepresentativeCoordinate(selectedRoad1.geometry);
+  let end   = getRepresentativeCoordinate(selectedRoad2.geometry);
+  if (!start || !end) {
+    alert("Kunne ikke udlede koordinater fra de valgte veje.");
+    return;
+  }
+  let [startLat, startLon] = start;
+  let [endLat, endLon]     = end;
+  // Konstruér API‑URL. Vi bruger driving-car profil og GeoJSON format for geometri.
+  const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${startLon},${startLat}&end=${endLon},${endLat}&geometry_format=geojson`;
+  try {
+    let resp = await fetch(orsUrl);
+    if (!resp.ok) {
+      throw new Error(`ORS-fejl: ${resp.status} ${resp.statusText}`);
+    }
+    let data = await resp.json();
+    if (!data.features || data.features.length === 0) {
+      alert("ORS returnerede ingen rute.");
+      return;
+    }
+    let routeGeom = data.features[0].geometry;
+    if (routeGeom.type !== "LineString" || !Array.isArray(routeGeom.coordinates)) {
+      alert("ORS returnerede ukendt geometri.");
+      return;
+    }
+    // Fjern tidligere rute
+    routeLayer.clearLayers();
+    // Rutegeometri er i [lon, lat]; konverter til [lat, lon]
+    let latLngs = routeGeom.coordinates.map(coord => [coord[1], coord[0]]);
+    L.polyline(latLngs, {
+      color: 'blue',
+      weight: 5,
+      opacity: 0.7
+    }).addTo(routeLayer);
+    // Zoom til ruten
+    map.fitBounds(latLngs);
+  } catch (err) {
+    console.error("ORS ruteplanlægningsfejl:", err);
+    alert("Der opstod en fejl ved hentning af ruten. Se konsollen for detaljer.");
+  }
+}
+
 function convertToWGS84(x, y) {
   // Ved at bytte parameterne [y, x] opnår vi, at northing (y) kommer først,
   // som derefter bliver konverteret til latitude, og easting (x) til longitude.
@@ -283,6 +393,9 @@ const overlayMaps = {
   "Ladestandere": chargeMapLayer,
   // Overordnede rutenumre på vejnettet
   "Rutenummereret vejnet": rutenummerLayer
+  ,
+  // Ruteplan via OpenRouteService
+  "Rute (ORS)": routeLayer
 };
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
@@ -695,6 +808,18 @@ var vej2CurrentIndex = -1;
  * Vigtigt: detail-kald hver gang
  ***************************************************/
 searchInput.addEventListener("input", function() {
+  // Når der tastes i søgefeltet, fjern eventuelle eksisterende info-bokse,
+  // statsvej-bokse og markører. Dette sikrer, at tidligere søgninger ikke
+  // overlapper med nye resultater.
+  document.getElementById("infoBox").style.display = "none";
+  document.getElementById("statsvejInfoBox").style.display = "none";
+  // Fjern eventuel marker og nulstil koordinatboks
+  if (currentMarker) {
+    map.removeLayer(currentMarker);
+    currentMarker = null;
+  }
+  resetCoordinateBox();
+
   const txt = searchInput.value.trim();
   if (txt.length < 2) {
     clearBtn.style.display = "none";
@@ -1478,4 +1603,12 @@ document.getElementById("btn100").addEventListener("click", function() {
 });
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
+
+  // Tilføj klik‑håndtering til ORS‑ruteplanlægningsknappen, hvis den findes i DOM
+  const planBtn = document.getElementById("planRouteBtn");
+  if (planBtn) {
+    planBtn.addEventListener("click", function() {
+      planRouteORS();
+    });
+  }
 });
