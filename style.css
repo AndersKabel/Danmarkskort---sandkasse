@@ -91,11 +91,21 @@
   position: absolute;
   top: 100%;
   left: 0;
-  width: 100%;          /* <-- FØR: 391px, nu følger de boksenes bredde */
   background: white;
   z-index: 2000;
   display: none;
   box-sizing: border-box;
+}
+
+/* Hoved-søgning: fylder hele sidens søgeboks */
+#results {
+  width: 100%;
+}
+
+/* Vej 1 / Vej 2: som før – fast bredde */
+#results-vej1,
+#results-vej2 {
+  width: 391px;
 }
 
 #results li,
