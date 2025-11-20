@@ -29,13 +29,43 @@
     
   <div id="sidebar">
     <div id="search-container">
-      <div class="search-wrapper">
-        <input type="text" id="search" placeholder="Søg efter adresse eller sted...">
-        <span class="clear-button" id="clearSearch">&times;</span>
-        <!-- FLYTTET HERIND: result-listen hører til søgefeltet -->
-        <ul id="results"></ul>
+      <!-- ØVERSTE LINJE: Hoved-søg + Rute-knap -->
+      <div class="flex-row">
+        <div class="search-wrapper">
+          <input type="text" id="search" placeholder="Søg efter adresse eller sted...">
+          <span class="clear-button" id="clearSearch">&times;</span>
+        </div>
+        <button id="routeToggleBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
+          Rute
+        </button>
+      </div>
+      <ul id="results"></ul>
+
+      <!-- RUTE-PANEL: Fra / Til / Via + Start -->
+      <div id="routePanel" class="hidden">
+        <div class="flex-row">
+          <div class="search-wrapper">
+            <input type="text" id="routeFrom" placeholder="Fra adresse...">
+            <ul id="results-route-from" class="autocomplete-list"></ul>
+          </div>
+          <div class="search-wrapper">
+            <input type="text" id="routeTo" placeholder="Til adresse...">
+            <ul id="results-route-to" class="autocomplete-list"></ul>
+          </div>
+        </div>
+        <div class="flex-row">
+          <div class="search-wrapper">
+            <input type="text" id="routeVia" placeholder="Via (valgfri)...">
+            <ul id="results-route-via" class="autocomplete-list"></ul>
+          </div>
+          <button id="planRouteBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
+            Start
+          </button>
+        </div>
+        <div id="routeSummary" class="route-summary"></div>
       </div>
 
+      <!-- VEJ 1 / VEJ 2 / FIND X -->
       <div class="flex-row">
         <div class="search-wrapper">
           <input type="text" id="vej1" placeholder="Første vejnavn...">
@@ -45,7 +75,7 @@
           <input type="text" id="vej2" placeholder="Andet vejnavn...">
           <ul id="results-vej2" class="autocomplete-list"></ul>
         </div>
-        <!-- NY KNAP: "Find X" -->
+        <!-- "Find X" -->
         <button id="findKrydsBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
           Find X
         </button>
@@ -78,7 +108,7 @@
     </div>
   </div>
       
-  <!-- NYT: Distance Options med knapper -->
+  <!-- Distance Options med knapper -->
   <div id="distanceOptions" class="distance-options">
     <button id="btn10" class="distance-btn">10 km</button>
     <button id="btn25" class="distance-btn">25 km</button>
