@@ -11,7 +11,7 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
  *
  * For at tilføje ruteplanlægning baseret på OpenStreetMap-data har vi
  * integreret OpenRouteService (ORS). ORS tilbyder en gratis plan med
- * 2.000 ruteopslag pr. dag og 40 pr. minut:contentReference[oaicite:0]{index=0}. Før du kan
+ * 2.000 ruteopslag pr. dag og 40 pr. minut. Før du kan
  * anvende tjenesten skal du oprette en gratis konto og hente en API-nøgle.
  * Besøg https://openrouteservice.org/, opret en konto og generér en nøgle
  * under sektionen "API Keys" i din brugerprofil. Indsæt nøglen i
@@ -26,120 +26,200 @@ var routeLayer = L.layerGroup();
 
 /**
  * Udtræk et repræsentativt punkt fra en vejgeometri
- *
- * Når en vej hentes fra Dataforsyningen returneres geometrien som en
- * GeoJSON MultiLineString (ofte i EPSG:25832). Vi vælger det første
- * koordinatsæt som repræsentativt punkt og konverterer det til
- * WGS84. Dette punkt bruges som start- eller slutpunkt til rute-
- * planlægning i ORS.
- *
- * @param {Object} geometry GeoJSON-objekt med type MultiLineString
- * @returns {Array|null} Array [lat, lon] i WGS84 eller null
+ * (beholdt som hjælper hvis du senere vil lave ruter ud fra vej-geometrier)
  */
 function getRepresentativeCoordinate(geometry) {
   if (!geometry || !Array.isArray(geometry.coordinates)) return null;
-  // Hent første koordinatsæt (kan være nested arrays)
   let coords = geometry.coordinates;
-  // MultiLineString: array af lines, hver med array af koordinater
   let firstLine = Array.isArray(coords[0]) ? coords[0] : null;
   if (!firstLine || firstLine.length === 0) return null;
   let firstCoord = firstLine[0];
   if (!firstCoord || firstCoord.length < 2) return null;
   let x = firstCoord[0];
   let y = firstCoord[1];
-  // Hvis koordinaterne er i UTM (typisk > 90), konverter til WGS84
   if (Math.abs(x) > 90 || Math.abs(y) > 90) {
     let [lat, lon] = convertToWGS84(x, y);
     return [lat, lon];
   }
-  // Ellers antag allerede WGS84: [lon, lat]
   return [firstCoord[1], firstCoord[0]];
 }
 
 /**
- * Planlæg en rute mellem de to valgte veje ved hjælp af ORS
- *
- * Denne funktion anvender de globalt valgte veje (selectedRoad1 og
- * selectedRoad2) og beregner en rute mellem dem. Den henter et
- * repræsentativt punkt fra hver vejgeometri, kalder ORS' Directions-
- * API og tegner den returnerede rute som en polyline på kortet.
+ * Hjælper: kald ORS Directions API (driving-car) som GeoJSON
+ * coordinates: array af [lon, lat]
+ * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
+ */
+async function requestORSRoute(coordsArray) {
+  const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+
+  const headers = {
+    "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
+    "Authorization": ORS_API_KEY,
+    "Content-Type": "application/json; charset=utf-8"
+  };
+
+  const body = JSON.stringify({ coordinates: coordsArray });
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: headers,
+    body: body
+  });
+
+  if (!resp.ok) {
+    throw new Error(`ORS-fejl: ${resp.status} ${resp.statusText}`);
+  }
+
+  const data = await resp.json();
+  if (!data.features || data.features.length === 0) {
+    throw new Error("ORS returnerede ingen rute.");
+  }
+
+  const feature = data.features[0];
+  const geom = feature.geometry;
+  if (!geom || !Array.isArray(geom.coordinates)) {
+    throw new Error("ORS returnerede ukendt geometri.");
+  }
+
+  const props = feature.properties || {};
+  let distance = 0;
+  let duration = 0;
+
+  if (Array.isArray(props.segments) && props.segments.length > 0) {
+    props.segments.forEach(seg => {
+      if (typeof seg.distance === "number") distance += seg.distance;
+      if (typeof seg.duration === "number") duration += seg.duration;
+    });
+  } else if (props.summary) {
+    if (typeof props.summary.distance === "number") distance = props.summary.distance;
+    if (typeof props.summary.duration === "number") duration = props.summary.duration;
+  }
+
+  return {
+    coords: geom.coordinates, // [lon,lat]
+    distance: distance,
+    duration: duration
+  };
+}
+
+/**
+ * Hjælper: find koordinater (lat,lon) for en adresse-tekst
+ * Bruger evt. allerede gemte koordinater, ellers Dataforsyningen.
+ */
+async function resolveRouteCoord(text, cachedCoord) {
+  if (cachedCoord && Array.isArray(cachedCoord) && cachedCoord.length === 2) {
+    return cachedCoord;
+  }
+  if (!text || text.trim().length === 0) return null;
+
+  try {
+    const url = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(text)}&per_side=1`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!Array.isArray(data) || data.length === 0 || !data[0].adgangsadresse?.id) {
+      return null;
+    }
+    const id = data[0].adgangsadresse.id;
+    const detailResp = await fetch(`https://api.dataforsyningen.dk/adgangsadresser/${id}`);
+    const detail = await detailResp.json();
+    const coords = detail.adgangspunkt?.koordinater;
+    if (!coords || coords.length < 2) return null;
+    const lon = coords[0];
+    const lat = coords[1];
+    return [lat, lon];
+  } catch (err) {
+    console.error("Fejl i resolveRouteCoord:", err);
+    return null;
+  }
+}
+
+/**
+ * Planlæg rute ud fra rute-felterne (Fra / Til / Via)
+ * Bruger OpenRouteService og tegner ruten på routeLayer.
  */
 async function planRouteORS() {
-  if (!selectedRoad1 || !selectedRoad2) {
-    alert("Vælg venligst to veje først (vej 1 og vej 2) før ruteplanlægning.");
-    return;
-  }
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
-    alert("ORS API-nøgle mangler. Indsæt din nøgle i konstanten ORS_API_KEY.");
+    alert("ORS API-nøgle mangler. Indsæt din nøgle i konstanten ORS_API_KEY i script.js.");
     return;
   }
-  // Udtræk start- og slutkoordinater
-  let start = getRepresentativeCoordinate(selectedRoad1.geometry);
-  let end   = getRepresentativeCoordinate(selectedRoad2.geometry);
-  if (!start || !end) {
-    alert("Kunne ikke udlede koordinater fra de valgte veje.");
-    return;
-  }
-  let [startLat, startLon] = start;
-  let [endLat, endLon]     = end;
-  // Konstruér API-URL. Vi bruger driving-car profil og GeoJSON format for geometri.
-  const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_API_KEY}&start=${startLon},${startLat}&end=${endLon},${endLat}&geometry_format=geojson`;
+
   try {
-    let resp = await fetch(orsUrl);
-    if (!resp.ok) {
-      throw new Error(`ORS-fejl: ${resp.status} ${resp.statusText}`);
-    }
-    let data = await resp.json();
-    if (!data.features || data.features.length === 0) {
-      alert("ORS returnerede ingen rute.");
+    const fromText = routeFromInput ? routeFromInput.value.trim() : "";
+    const toText   = routeToInput   ? routeToInput.value.trim()   : "";
+    const viaText  = routeViaInput  ? routeViaInput.value.trim()  : "";
+
+    if (!fromText || !toText) {
+      alert("Angiv både 'Fra' og 'Til' adresse.");
       return;
     }
-    let routeGeom = data.features[0].geometry;
-    if (routeGeom.type !== "LineString" || !Array.isArray(routeGeom.coordinates)) {
-      alert("ORS returnerede ukendt geometri.");
+
+    const fromCoord = await resolveRouteCoord(fromText, routeFromCoord);
+    const toCoord   = await resolveRouteCoord(toText, routeToCoord);
+    let viaCoord    = null;
+    if (viaText) {
+      viaCoord = await resolveRouteCoord(viaText, routeViaCoord);
+    }
+
+    if (!fromCoord || !toCoord) {
+      alert("Kunne ikke finde koordinater for en eller flere adresser.");
       return;
     }
-    // Fjern tidligere rute
+
+    // Koordinater i ORS-format [lon, lat]
+    const coordsArray = [];
+    coordsArray.push([fromCoord[1], fromCoord[0]]);
+    if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
+    coordsArray.push([toCoord[1], toCoord[0]]);
+
+    const routeInfo = await requestORSRoute(coordsArray);
+
+    // Tegn ruten
     routeLayer.clearLayers();
-    // Rutegeometri er i [lon, lat]; konverter til [lat, lon]
-    let latLngs = routeGeom.coordinates.map(coord => [coord[1], coord[0]]);
-    L.polyline(latLngs, {
-      color: 'blue',
+    const latLngs = routeInfo.coords.map(c => [c[1], c[0]]);
+    const poly = L.polyline(latLngs, {
+      color: "blue",
       weight: 5,
       opacity: 0.7
     }).addTo(routeLayer);
-    // Zoom til ruten
-    map.fitBounds(latLngs);
+
+    if (!map.hasLayer(routeLayer)) {
+      routeLayer.addTo(map);
+    }
+    map.fitBounds(poly.getBounds());
+
+    const routeSummaryEl = document.getElementById("routeSummary");
+    if (routeSummaryEl) {
+      let parts = [];
+      if (routeInfo.distance != null) {
+        const km = routeInfo.distance / 1000;
+        parts.push(`Længde: ${km.toFixed(1)} km`);
+      }
+      if (routeInfo.duration != null) {
+        const min = Math.round(routeInfo.duration / 60);
+        parts.push(`Tid: ca. ${min} min`);
+      }
+      routeSummaryEl.textContent = parts.join(" | ");
+    }
   } catch (err) {
     console.error("ORS ruteplanlægningsfejl:", err);
-    alert("Der opstod en fejl ved hentning af ruten. Se konsollen for detaljer.");
+    alert("Der opstod en fejl ved beregning af ruten. Se konsollen (F12) for detaljer.");
   }
 }
 
 function convertToWGS84(x, y) {
-  // Ved at bytte parameterne [y, x] opnår vi, at northing (y) kommer først,
-  // som derefter bliver konverteret til latitude, og easting (x) til longitude.
   let result = proj4("EPSG:25832", "EPSG:4326", [x, y]);
   console.log("convertToWGS84 output:", result);
-  // Returnér [latitude, longitude] til Leaflet
   return [result[1], result[0]];
 }
 
 /***************************************************
  * Custom Places
- *
- * Nogle steder, fx mindre bakkedrag eller fredede fortidsminder,
- * figurerer ikke som officielle stednavne i Dataforsyningens søge-API.
- * Hvis man ønsker at kunne finde disse via søgefeltet, kan de
- * tilføjes til dette array. Hvert element indeholder navnet på
- * stedet og dets koordinater i WGS84 (latitude, longitude).
- */
+ ***************************************************/
 var customPlaces = [
   {
     navn: "Tellerup Bjerge",
     coords: [55.38627, 9.92760]
   }
-  // Fremtidige specialsteder kan tilføjes her
 ];
 
 /***************************************************
@@ -181,7 +261,6 @@ function showCopyPopup(message) {
 
 /***************************************************
  * Funktion til beregning af sorteringsprioritet
- * Lavere tal betyder bedre match.
  ***************************************************/
 function getSortPriority(item, query) {
   let text = "";
@@ -192,17 +271,15 @@ function getSortPriority(item, query) {
   } else if (item.type === "strandpost") {
     text = item.tekst || "";
   } else if (item.type === "navngivenvej") {
-    // navngivne veje bruger 'navn' som tekstfelt
     text = item.navn || "";
   } else if (item.type === "custom") {
-    // custom places bruger 'navn' som primært tekstfelt
     text = item.navn || "";
   }
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
 
   if (lowerText === lowerQuery) {
-    return 0; // Perfekt match
+    return 0;
   } else if (lowerText.startsWith(lowerQuery)) {
     return 1;
   } else if (lowerText.includes(lowerQuery)) {
@@ -228,7 +305,6 @@ function shouldUpdateData() {
   if (!lastUpdated) {
     return true;
   }
-  // 24 timer = 86.400.000 millisekunder
   return Date.now() - parseInt(lastUpdated, 10) > 86400000;
 }
 
@@ -241,7 +317,6 @@ var map = L.map('map', {
   zoomControl: false
 });
 
-// OpenStreetMap-lag
 var osmLayer = L.tileLayer(
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   {
@@ -250,9 +325,6 @@ var osmLayer = L.tileLayer(
   }
 ).addTo(map);
 
-/***************************************************
- * TILFØJET: Ortofoto-lag fra Kortforsyningen (satellit)
- ***************************************************/
 var ortofotoLayer = L.tileLayer.wms(
   "https://api.dataforsyningen.dk/orto_foraar_DAF?service=WMS&request=GetCapabilities&token=a63a88838c24fc85d47f32cde0ec0144",
   {
@@ -264,7 +336,6 @@ var ortofotoLayer = L.tileLayer.wms(
   }
 );
 
-// Opret WMS-lag for redningsnumre (Strandposter)
 var redningsnrLayer = L.tileLayer.wms("https://kort.strandnr.dk/geoserver/nobc/ows", {
   layers: "Redningsnummer",
   format: "image/png",
@@ -273,13 +344,6 @@ var redningsnrLayer = L.tileLayer.wms("https://kort.strandnr.dk/geoserver/nobc/o
   attribution: "Data: redningsnummer.dk"
 });
 
-/**
- * Rutenummereret vejnet (VD Geocloud WMS)
- * Dette lag viser rutenumre på det overordnede vejnet. Det blev fjernet i en
- * senere version, men genindføres her for at give mulighed for at slå
- * rutenumre til og fra via lagkontrollen. Laget hentes som et WMS-billede
- * fra Vejdirektoratets Geocloud.
- */
 var rutenummerLayer = L.tileLayer.wms("https://geocloud.vd.dk/VM/wms", {
   layers: "rutenummereret-vejnet",
   format: "image/png",
@@ -289,15 +353,14 @@ var rutenummerLayer = L.tileLayer.wms("https://geocloud.vd.dk/VM/wms", {
 });
 
 /***************************************************
- * NYT: Opret nyt Falck Ass-lag (GeoJSON)
- * Henter data fra filen "FalckStationer_data.json"
+ * Falck Ass-lag
  ***************************************************/
 var falckAssLayer = L.geoJSON(null, {
   onEachFeature: function(feature, layer) {
     let tekst = feature.properties.tekst || "Falck Ass";
     layer.bindPopup("<strong>" + tekst + "</strong>");
   },
-  style: function(feature) {
+  style: function() {
     return { color: "orange" };
   }
 });
@@ -311,10 +374,10 @@ fetch("FalckStationer_data.json")
   .catch(err => console.error("Fejl ved hentning af Falck Ass data:", err));
 
 /***************************************************
- * Opret kommunegrænser layer (GeoJSON fra Dataforsyningen)
+ * Kommunegrænser
  ***************************************************/
 var kommunegrænserLayer = L.geoJSON(null, {
-  style: function(feature) {
+  style: function() {
     return {
       color: "#3388ff",
       weight: 2,
@@ -332,17 +395,13 @@ fetch("https://api.dataforsyningen.dk/kommuner?format=geojson")
   .catch(err => console.error("Fejl ved hentning af kommunegrænser:", err));
 
 /***************************************************
- * Tilføj lagkontrol
+ * Lagkontrol / overlays
  ***************************************************/
-// Lag til DB SMS kort (åbner dvc.nsf/kort) og DB Journal
-var dbSmsLayer        = L.layerGroup();
-var dbJournalLayer    = L.layerGroup();
-// 25 km grænse – et tomt layer, vi vil tegne en forskudt grænse på
-var border25Layer = L.layerGroup();
-// Ladestandere-lag (Open Charge Map)
+var dbSmsLayer     = L.layerGroup();
+var dbJournalLayer = L.layerGroup();
+var border25Layer  = L.layerGroup();
 var chargeMapLayer = L.layerGroup();
 
-// Hent grænser og forskyd dem
 var originalBorderCoords = [];
 fetch("dansk-tysk-grænse.geojson")
   .then(r => r.json())
@@ -361,6 +420,7 @@ fetch("dansk-tysk-grænse.geojson")
       dashArray: '5,5'
     }).addTo(border25Layer);
   });
+
 fetch("svensk-grænse.geojson")
   .then(r => r.json())
   .then(g => {
@@ -387,14 +447,12 @@ const overlayMaps = {
   "Strandposter": redningsnrLayer,
   "Falck Ass": falckAssLayer,
   "Kommunegrænser": kommunegrænserLayer,
-  "DB SMS kort":       dbSmsLayer,
-  "DB Journal":        dbJournalLayer,
+  "DB SMS kort": dbSmsLayer,
+  "DB Journal": dbJournalLayer,
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
-  // Overordnede rutenumre på vejnettet
-  "Rutenummereret vejnet": rutenummerLayer
-  ,
-  // Ruteplan via OpenRouteService
+  "Rutenummereret vejnet": rutenummerLayer,
+  // Ruteplan via OpenRouteService (rutelag)
   "Rute (ORS)": routeLayer
 };
 
@@ -468,9 +526,8 @@ fetch("kommunedata.json")
   })
   .catch(err => console.error("Fejl ved hentning af kommunedata:", err));
 
-
 /***************************************************
- * Ny hjælpefunktion: Nulstil koordinatboksen
+ * Nulstil / sæt koordinatboks
  ***************************************************/
 function resetCoordinateBox() {
   const coordinateBox = document.getElementById("coordinateBox");
@@ -478,9 +535,6 @@ function resetCoordinateBox() {
   coordinateBox.style.display = "none";
 }
 
-/***************************************************
- * Ny hjælpefunktion: Sæt koordinatboksen med kopiering
- ***************************************************/
 function setCoordinateBox(lat, lon) {
   const coordinateBox = document.getElementById("coordinateBox");
   let latFixed = lat.toFixed(6);
@@ -512,7 +566,7 @@ function setCoordinateBox(lat, lon) {
 }
 
 /***************************************************
- * Global variabel og funktioner til Strandposter-søgning
+ * Strandposter – global cache
  ***************************************************/
 var allStrandposter = [];
 var strandposterReady = false;
@@ -538,8 +592,6 @@ function fetchAllStrandposter() {
 map.on("overlayadd", function(event) {
   if (event.name === "Strandposter") {
     console.log("Strandposter laget er tilføjet.");
-
-    // Hent altid data ved første aktivering, eller hvis der ikke er nogen gemt endnu
     if (allStrandposter.length === 0) {
       console.log("Henter strandposter-data første gang...");
       fetchAllStrandposter();
@@ -550,7 +602,7 @@ map.on("overlayadd", function(event) {
 });
 
 /***************************************************
- * Klik på kort => reverse geocoding => opdater sidepanelet
+ * Klik på kort => reverse geocoding
  ***************************************************/
 map.on('click', function(e) {
   let lat = e.latlng.lat;
@@ -571,8 +623,6 @@ map.on('click', function(e) {
 
 /***************************************************
  * updateInfoBox
- * Viser fuld adresse, Eva.Net/Notes-links i infobox,
- * Viser kommunekode/vejkode i overlay
  ***************************************************/
 async function updateInfoBox(data, lat, lon) {
   const streetviewLink = document.getElementById("streetviewLink");
@@ -584,14 +634,14 @@ async function updateInfoBox(data, lat, lon) {
   let adresseStr, vejkode, kommunekode;
   let evaFormat, notesFormat;
   
-  if(data.adgangsadresse){
+  if (data.adgangsadresse) {
     adresseStr = data.adgangsadresse.adressebetegnelse || 
                  `${data.adgangsadresse.vejnavn || ""} ${data.adgangsadresse.husnr || ""}, ${data.adgangsadresse.postnr || ""} ${data.adgangsadresse.postnrnavn || ""}`;
     evaFormat   = `${data.adgangsadresse.vejnavn || ""},${data.adgangsadresse.husnr || ""},${data.adgangsadresse.postnr || ""}`;
     notesFormat = `${data.adgangsadresse.vejnavn || ""} ${data.adgangsadresse.husnr || ""}, ${data.adgangsadresse.postnr || ""} ${data.adgangsadresse.postnrnavn || ""}`;
     vejkode     = data.adgangsadresse.vejkode || "?";
     kommunekode = data.adgangsadresse.kommunekode || "?";
-  } else if(data.adressebetegnelse) {
+  } else if (data.adressebetegnelse) {
     adresseStr  = data.adressebetegnelse;
     evaFormat   = "?, ?, ?";
     notesFormat = "?, ?, ?";
@@ -608,9 +658,7 @@ async function updateInfoBox(data, lat, lon) {
   streetviewLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}`;
   addressEl.textContent = adresseStr;
 
-  // nulstil og genopbyg extraInfoEl
   extraInfoEl.innerHTML = "";
-  // Tilføj Eva.Net/Notes-links uden et ekstra linjeskift før dem. Det fjernede <br> var årsag til en tom linje i infoboksen.
   extraInfoEl.insertAdjacentHTML(
     "beforeend",
     `
@@ -653,7 +701,6 @@ async function updateInfoBox(data, lat, lon) {
   let statsvejData = await checkForStatsvej(lat, lon);
   const statsvejInfoEl = document.getElementById("statsvejInfo");
 
-  // Udtræk felter med både store og små bogstaver
   const admNr       = statsvejData?.ADM_NR       ?? statsvejData?.adm_nr       ?? null;
   const forgrening  = statsvejData?.FORGRENING   ?? statsvejData?.forgrening   ?? null;
   const betegnelse  = statsvejData?.BETEGNELSE   ?? statsvejData?.betegnelse   ?? null;
@@ -663,7 +710,6 @@ async function updateInfoBox(data, lat, lon) {
   const vejstatus   = statsvejData?.VEJSTATUS    ?? statsvejData?.vejstatus    ?? statsvejData?.VEJ_STATUS ?? statsvejData?.status ?? null;
   const vejmynd     = statsvejData?.VEJMYNDIGHED ?? statsvejData?.vejmyndighed ?? statsvejData?.VEJMYND     ?? statsvejData?.vejmynd ?? null;
   
-  // afgør om vi har en statsvej
   const hasStatsvej = admNr != null || forgrening != null || (betegnelse && String(betegnelse).trim() !== "") || (vejtype && String(vejtype).trim() !== "");
   const showStatsBox = hasStatsvej || vejstatus || vejmynd;
 
@@ -676,7 +722,6 @@ async function updateInfoBox(data, lat, lon) {
       html += `<strong>Bestyrer:</strong> ${bestyrer || "Ukendt"}<br>`;
       html += `<strong>Vejtype:</strong> ${vejtype || "Ukendt"}`;
     }
-    // Beskrivelse vises ikke længere i statsvej-info-boksen
 
     if (vejstatus) {
       html += `<br><strong>Vejstatus:</strong> ${vejstatus}`;
@@ -685,7 +730,7 @@ async function updateInfoBox(data, lat, lon) {
       html += `<br><strong>Vejmyndighed:</strong> ${vejmynd}`;
     }
     statsvejInfoEl.innerHTML = html;
-    // hent kilometermarkering kun hvis der er en statsvej
+
     if (hasStatsvej) {
       const kmText = await getKmAtPoint(lat, lon);
       if (kmText) {
@@ -699,7 +744,7 @@ async function updateInfoBox(data, lat, lon) {
   }
   document.getElementById("infoBox").style.display = "block";
   
-  // Hent kommuneinfo
+  // Kommuneinfo
   if (kommunekode !== "?") {
     try {
       let komUrl = `https://api.dataforsyningen.dk/kommuner/${kommunekode}`;
@@ -713,7 +758,6 @@ async function updateInfoBox(data, lat, lon) {
           let gaderVeje = info["Gader og veje"];
           let link      = info.gemLink;
           if (link) {
-            // Vis kommuneoplysninger med større skrifttype; samlet på én linje for at sikre stilen anvendes korrekt
             extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Kommune: <a href="${link}" target="_blank">${kommunenavn}</a> | Døde dyr: ${doedeDyr} | Gader og veje: ${gaderVeje}</span>`;
           } else {
             extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Kommune: ${kommunenavn} | Døde dyr: ${doedeDyr} | Gader og veje: ${gaderVeje}</span>`;
@@ -725,7 +769,6 @@ async function updateInfoBox(data, lat, lon) {
     }
   }
   
-  // Politikkreds – tilføjes hvis tilgængelig
   const politikredsNavn = data.politikredsnavn
     ?? data.adgangsadresse?.politikredsnavn
     ?? null;
@@ -734,7 +777,6 @@ async function updateInfoBox(data, lat, lon) {
     ?? null;
   if (politikredsNavn || politikredsKode) {
     const polititekst = politikredsKode ? `${politikredsNavn || ""} (${politikredsKode})` : `${politikredsNavn}`;
-    // Vis politikreds med større skrifttype og på egen linje
     extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Politikreds: ${polititekst}</span>`;
   }
 }
@@ -749,6 +791,19 @@ var vej1Input    = document.getElementById("vej1");
 var vej2Input    = document.getElementById("vej2");
 var vej1List     = document.getElementById("results-vej1");
 var vej2List     = document.getElementById("results-vej2");
+
+// Rute-felter
+var routeFromInput = document.getElementById("routeFrom");
+var routeToInput   = document.getElementById("routeTo");
+var routeViaInput  = document.getElementById("routeVia");
+var routeFromList  = document.getElementById("results-route-from");
+var routeToList    = document.getElementById("results-route-to");
+var routeViaList   = document.getElementById("results-route-via");
+
+// Koordinater til rute
+var routeFromCoord = null;
+var routeToCoord   = null;
+var routeViaCoord  = null;
 
 function addClearButton(inputElement, listElement) {
   let btn = document.createElement("span");
@@ -774,6 +829,10 @@ function addClearButton(inputElement, listElement) {
 }
 addClearButton(vej1Input, vej1List);
 addClearButton(vej2Input, vej2List);
+// Clear-knapper til rute-felter
+if (routeFromInput && routeFromList) addClearButton(routeFromInput, routeFromList);
+if (routeToInput && routeToList)     addClearButton(routeToInput, routeToList);
+if (routeViaInput && routeViaList)   addClearButton(routeViaInput, routeViaList);
 
 /***************************************************
  * Globale arrays til piletaster
@@ -785,17 +844,32 @@ var vej1CurrentIndex = -1;
 var vej2Items = [];
 var vej2CurrentIndex = -1;
 
+// Piletaster til rute-felter
+var routeFromItems = [];
+var routeFromIndex = -1;
+var routeToItems   = [];
+var routeToIndex   = -1;
+var routeViaItems  = [];
+var routeViaIndex  = -1;
+
 /***************************************************
- * #search => doSearch
- * Vigtigt: detail-kald hver gang
+ * Route-panel toggling
+ ***************************************************/
+var routePanel = document.getElementById("routePanel");
+var routeToggleBtn = document.getElementById("routeToggleBtn");
+if (routeToggleBtn && routePanel) {
+  routeToggleBtn.addEventListener("click", function() {
+    routePanel.classList.toggle("hidden");
+  });
+}
+
+/***************************************************
+ * Hoved-søg (#search) => doSearch
  ***************************************************/
 searchInput.addEventListener("input", function() {
-  // Når der tastes i søgefeltet, fjern eventuelle eksisterende info-bokse,
-  // statsvej-bokse og markører. Dette sikrer, at tidligere søgninger ikke
-  // overlapper med nye resultater.
+  // Ny søgning: skjul info-bokse, marker mv.
   document.getElementById("infoBox").style.display = "none";
   document.getElementById("statsvejInfoBox").style.display = "none";
-  // Fjern eventuel marker og nulstil koordinatboks
   if (currentMarker) {
     map.removeLayer(currentMarker);
     currentMarker = null;
@@ -813,7 +887,6 @@ searchInput.addEventListener("input", function() {
   clearBtn.style.display = "inline";
   doSearch(txt, resultsList);
   
-  // Tjek om brugeren har indtastet koordinater
   const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
   if (coordRegex.test(txt)) {
     const match = txt.match(coordRegex);
@@ -833,9 +906,6 @@ searchInput.addEventListener("input", function() {
   }
 });
 
-/***************************************************
- * Piletaster + Enter i søgefeltet
- ***************************************************/
 searchInput.addEventListener("keydown", function(e) {
   if (searchItems.length === 0) return;
   if (e.key === "ArrowDown") {
@@ -866,11 +936,23 @@ function highlightSearchItem() {
 }
 
 clearBtn.addEventListener("click", function() {
+  searchInput.value = "";
+  clearBtn.style.display = "none";
+  document.getElementById("infoBox").style.display = "none";
+  document.getElementById("statsvejInfoBox").style.display = "none";
+  resetCoordinateBox();
   resetInfoBox();
+  searchInput.focus();
+  if (currentMarker) {
+    map.removeLayer(currentMarker);
+    currentMarker = null;
+  }
+  resultsList.innerHTML = "";
+  document.getElementById("kommuneOverlay").style.display = "none";
 });
 
 /***************************************************
- * Vej1 => doSearchRoad + piletaster
+ * Vej1 / Vej2
  ***************************************************/
 vej1Input.addEventListener("input", function() {
   const txt = vej1Input.value.trim();
@@ -909,9 +991,6 @@ function highlightVej1Item() {
   }
 }
 
-/***************************************************
- * Vej2 => doSearchRoad + piletaster
- ***************************************************/
 vej2Input.addEventListener("input", function() {
   const txt = vej2Input.value.trim();
   if (txt.length < 2) {
@@ -951,25 +1030,6 @@ function highlightVej2Item() {
   }
 }
 
-/***************************************************
- * Klik på clear-knap => ryd
- ***************************************************/
-clearBtn.addEventListener("click", function() {
-  searchInput.value = "";
-  clearBtn.style.display = "none";
-  document.getElementById("infoBox").style.display = "none";
-  document.getElementById("statsvejInfoBox").style.display = "none";
-  resetCoordinateBox();
-  resetInfoBox();
-  searchInput.focus();
-  if (currentMarker) {
-    map.removeLayer(currentMarker);
-    currentMarker = null;
-  }
-  resultsList.innerHTML = "";
-  document.getElementById("kommuneOverlay").style.display = "none";
-});
-
 function resetInfoBox() {
   document.getElementById("extra-info").textContent = "";
   document.getElementById("skraafotoLink").style.display = "none";
@@ -990,7 +1050,173 @@ vej2Input.parentElement.querySelector(".clear-button").addEventListener("click",
 });
 
 /***************************************************
- * Globale variabler til at gemme valgte veje
+ * Rute-felter: søgning i Dataforsyningen
+ ***************************************************/
+function doRouteSearch(query, listElement, type) {
+  let url = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}&per_side=10`;
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      listElement.innerHTML = "";
+
+      let itemsArray;
+      if (type === "from") {
+        routeFromItems = [];
+        routeFromIndex = -1;
+        itemsArray = routeFromItems;
+      } else if (type === "to") {
+        routeToItems = [];
+        routeToIndex = -1;
+        itemsArray = routeToItems;
+      } else {
+        routeViaItems = [];
+        routeViaIndex = -1;
+        itemsArray = routeViaItems;
+      }
+
+      data.forEach(item => {
+        let li = document.createElement("li");
+        li.textContent = item.tekst;
+        li.addEventListener("click", function() {
+          selectRouteSuggestion(item, type, listElement);
+        });
+        listElement.appendChild(li);
+        itemsArray.push(li);
+      });
+      listElement.style.display = data.length > 0 ? "block" : "none";
+    })
+    .catch(err => console.error("Fejl i doRouteSearch:", err));
+}
+
+function selectRouteSuggestion(item, type, listElement) {
+  const input = type === "from" ? routeFromInput : type === "to" ? routeToInput : routeViaInput;
+  input.value = item.tekst || "";
+  listElement.innerHTML = "";
+  listElement.style.display = "none";
+
+  const adgangsId = item.adgangsadresse && item.adgangsadresse.id;
+  if (!adgangsId) {
+    console.error("Ingen adgangsadresse.id for rute-forslag");
+    return;
+  }
+  const detailUrl = `https://api.dataforsyningen.dk/adgangsadresser/${adgangsId}`;
+  fetch(detailUrl)
+    .then(r => r.json())
+    .then(addr => {
+      let coords = addr.adgangspunkt?.koordinater;
+      if (!coords || coords.length < 2) return;
+      const lon = coords[0];
+      const lat = coords[1];
+      if (type === "from") {
+        routeFromCoord = [lat, lon];
+      } else if (type === "to") {
+        routeToCoord = [lat, lon];
+      } else {
+        routeViaCoord = [lat, lon];
+      }
+    })
+    .catch(err => console.error("Fejl i selectRouteSuggestion:", err));
+}
+
+function highlightRouteItem(type) {
+  let items, idx;
+  if (type === "from") {
+    items = routeFromItems;
+    idx = routeFromIndex;
+  } else if (type === "to") {
+    items = routeToItems;
+    idx = routeToIndex;
+  } else {
+    items = routeViaItems;
+    idx = routeViaIndex;
+  }
+  if (!items) return;
+  items.forEach(li => li.classList.remove("highlight"));
+  if (idx >= 0 && idx < items.length) {
+    items[idx].classList.add("highlight");
+  }
+}
+
+function setupRouteInputHandlers(inputElement, listElement, type) {
+  if (!inputElement || !listElement) return;
+
+  inputElement.addEventListener("input", function() {
+    const txt = inputElement.value.trim();
+    if (txt.length < 2) {
+      listElement.innerHTML = "";
+      listElement.style.display = "none";
+      if (type === "from") {
+        routeFromItems = [];
+        routeFromIndex = -1;
+        routeFromCoord = null;
+      } else if (type === "to") {
+        routeToItems = [];
+        routeToIndex = -1;
+        routeToCoord = null;
+      } else {
+        routeViaItems = [];
+        routeViaIndex = -1;
+        routeViaCoord = null;
+      }
+      return;
+    }
+    doRouteSearch(txt, listElement, type);
+  });
+
+  inputElement.addEventListener("keydown", function(e) {
+    let items, idxName;
+    if (type === "from") {
+      items = routeFromItems;
+      idxName = "routeFromIndex";
+    } else if (type === "to") {
+      items = routeToItems;
+      idxName = "routeToIndex";
+    } else {
+      items = routeViaItems;
+      idxName = "routeViaIndex";
+    }
+    if (!items || items.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (type === "from") {
+        routeFromIndex = (routeFromIndex + 1) % items.length;
+      } else if (type === "to") {
+        routeToIndex = (routeToIndex + 1) % items.length;
+      } else {
+        routeViaIndex = (routeViaIndex + 1) % items.length;
+      }
+      highlightRouteItem(type);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (type === "from") {
+        routeFromIndex = (routeFromIndex + items.length - 1) % items.length;
+      } else if (type === "to") {
+        routeToIndex = (routeToIndex + items.length - 1) % items.length;
+      } else {
+        routeViaIndex = (routeViaIndex + items.length - 1) % items.length;
+      }
+      highlightRouteItem(type);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      let idx;
+      if (type === "from") idx = routeFromIndex;
+      else if (type === "to") idx = routeToIndex;
+      else idx = routeViaIndex;
+
+      if (idx >= 0 && idx < items.length) {
+        items[idx].click();
+      }
+    }
+  });
+}
+
+setupRouteInputHandlers(routeFromInput, routeFromList, "from");
+setupRouteInputHandlers(routeToInput,   routeToList,   "to");
+setupRouteInputHandlers(routeViaInput,  routeViaList,  "via");
+
+/***************************************************
+ * Globale variabler til at gemme valgte veje (Find X)
  ***************************************************/
 var selectedRoad1 = null;
 var selectedRoad2 = null;
@@ -1070,7 +1296,7 @@ function doSearchRoad(query, listElement, inputField, which) {
  ***************************************************/
 function doSearchStrandposter(query) {
   query = query.toLowerCase();
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     function filterAndMap() {
       let results = allStrandposter.filter(feature => {
         let rednr = (feature.properties.StrandNr || "").toLowerCase();
@@ -1115,17 +1341,12 @@ function doSearchStrandposter(query) {
 function doSearch(query, listElement) {
   let addrUrl = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}`;
   let stedUrl = `https://api.dataforsyningen.dk/rest/gsearch/v2.0/stednavn?q=${encodeURIComponent(query)}&limit=100&token=a63a88838c24fc85d47f32cde0ec0144`;
-  // Navngivne veje: søg i officielle vejnavne via Dataforsyningen. Ved at
-  // sætte per_side begrænses antal resultater. For at understøtte
-  // autocomplete/partial matches tilføjes wildcard * efter hvert ord.
   const queryWithWildcard = query.trim().split(/\s+/).map(w => w + "*").join(" ");
   let roadUrl = `https://api.dataforsyningen.dk/navngivneveje?q=${encodeURIComponent(queryWithWildcard)}&per_side=20`;
-  // Kun indlæs strandposter hvis laget er tændt og data er klar
   let strandPromise = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
     : Promise.resolve([]);
   
-  // Specialsteder: filtrer customPlaces efter query
   let customResults = customPlaces
     .filter(p => p.navn.toLowerCase().includes(query.toLowerCase()))
     .map(p => ({
@@ -1167,7 +1388,6 @@ function doSearch(query, listElement) {
         }));
       }
     }
-    // Navngivne veje resultater (vejnavne)
     let roadResults = (roadData || []).map(item => ({
       type: "navngivenvej",
       navn: item.navn || item.adresseringsnavn || "",
@@ -1175,10 +1395,8 @@ function doSearch(query, listElement) {
       visualCenter: item.visueltcenter,
       bbox: item.bbox
     }));
-    // Kombiner alle resultater inkl. specialsteder og navngivne veje
     let combined = [...addrResults, ...stedResults, ...roadResults, ...strandData, ...customResults];
     combined.sort((a, b) => {
-      // Prioriter stednavne, navngivne veje og specialsteder over adresser
       const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom");
       const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom");
       if (aIsName && !bIsName) return -1;
@@ -1192,10 +1410,8 @@ function doSearch(query, listElement) {
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
       } else if (obj.type === "navngivenvej") {
-        // brug vej-ikon til navngivne veje
         li.innerHTML = `🛣️ ${obj.navn}`;
       } else if (obj.type === "stednavn" || obj.type === "custom") {
-        // brug pin-ikon for stednavne og specialsteder
         li.innerHTML = `📍 ${obj.navn}`;
       }
       li.addEventListener("click", function() {
@@ -1269,11 +1485,9 @@ function doSearch(query, listElement) {
               marker.bindPopup(`<strong>${obj.tekst}</strong><br>(Reverse geocoding fejlede)`).openPopup();
             });
         } else if (obj.type === "custom") {
-          // specialsteder som Tellerup Bjerge
           let [lat, lon] = obj.coords;
           setCoordinateBox(lat, lon);
           placeMarkerAndZoom([lat, lon], obj.navn);
-          // Reverse geocoding for at vise nærmeste adresse i infoboksen
           let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
           fetch(revUrl)
             .then(r => r.json())
@@ -1284,23 +1498,19 @@ function doSearch(query, listElement) {
           listElement.innerHTML = "";
           listElement.style.display = "none";
         } else if (obj.type === "navngivenvej") {
-          // Navngiven vej: brug visuelt center til at placere markør
           let lat, lon;
           if (Array.isArray(obj.visualCenter) && obj.visualCenter.length === 2) {
             lon = obj.visualCenter[0];
             lat = obj.visualCenter[1];
           } else if (Array.isArray(obj.bbox) && obj.bbox.length === 4) {
-            // hvis visuelt center mangler, brug midtpunkt af bbox
             const [minLon, minLat, maxLon, maxLat] = obj.bbox;
             lon = (minLon + maxLon) / 2;
             lat = (minLat + maxLat) / 2;
           } else {
-            // fallback: ignorer
             return;
           }
           setCoordinateBox(lat, lon);
           placeMarkerAndZoom([lat, lon], obj.navn);
-          // Reverse geocoding til nærmeste adresse
           let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
           fetch(revUrl)
             .then(r => r.json())
@@ -1363,13 +1573,26 @@ function placeMarkerAndZoom(coords, displayText) {
 }
 
 /***************************************************
- * checkForStatsvej => henter statsvej (Geocloud)
+ * checkForStatsvej
  ***************************************************/
 async function checkForStatsvej(lat, lon) {
   let [utmX, utmY] = proj4("EPSG:4326", "EPSG:25832", [lon, lat]);
   let buffer = 100;
   let bbox = `${utmX - buffer},${utmY - buffer},${utmX + buffer},${utmY + buffer}`;
-  let url = `https://geocloud.vd.dk/CVF/wms?\nSERVICE=WMS&\nVERSION=1.1.1&\nREQUEST=GetFeatureInfo&\nINFO_FORMAT=application/json&\nTRANSPARENT=true&\nLAYERS=CVF:veje&\nQUERY_LAYERS=CVF:veje&\nSRS=EPSG:25832&\nWIDTH=101&\nHEIGHT=101&\nBBOX=${bbox}&\nX=50&\nY=50`;
+  let url = `https://geocloud.vd.dk/CVF/wms?
+SERVICE=WMS&
+VERSION=1.1.1&
+REQUEST=GetFeatureInfo&
+INFO_FORMAT=application/json&
+TRANSPARENT=true&
+LAYERS=CVF:veje&
+QUERY_LAYERS=CVF:veje&
+SRS=EPSG:25832&
+WIDTH=101&
+HEIGHT=101&
+BBOX=${bbox}&
+X=50&
+Y=50`;
   try {
     let response = await fetch(url);
     let textData = await response.text();
@@ -1404,8 +1627,7 @@ function parseTextResponse(text) {
 }
 
 /***************************************************
- * ➕ NY: getKmAtPoint – henter km via din Cloudflare-worker
- * Returnerer "" hvis intet kan udledes.
+ * getKmAtPoint – henter km via Cloudflare-worker
  ***************************************************/
 async function getKmAtPoint(lat, lon) {
   try {
@@ -1453,7 +1675,7 @@ async function getKmAtPoint(lat, lon) {
 }
 
 /***************************************************
- * Statsvej / info-bokse
+ * Statsvej / info-bokse close-knapper
  ***************************************************/
 const statsvejInfoBox = document.getElementById("statsvejInfoBox");
 const statsvejCloseBtn = document.getElementById("statsvejCloseBtn");
@@ -1535,7 +1757,7 @@ document.getElementById("findKrydsBtn").addEventListener("click", async function
 });
 
 /***************************************************
- * NYT: Distance Options – Tegn cirkel med radius 10, 25, 50 eller 100 km
+ * Distance Options – cirkler
  ***************************************************/
 var currentCircle = null;
 var selectedRadius = null;
@@ -1583,10 +1805,12 @@ document.getElementById("btn100").addEventListener("click", function() {
   selectedRadius = 100000;
   toggleCircle(100000);
 });
+
+/***************************************************
+ * DOMContentLoaded
+ ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
-
-  // Tilføj klik-håndtering til ORS-ruteplanlægningsknappen, hvis den findes i DOM
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
