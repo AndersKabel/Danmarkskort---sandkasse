@@ -10,7 +10,6 @@
 }
 
 #search-container {
-  /* Fylder hele bredden af sidebar i stedet for at være absolut placeret */
   width: 100%;
   box-sizing: border-box;
   background: rgba(255, 255, 255, 0.9);
@@ -35,7 +34,10 @@
 ============================ */
 #search,
 #vej1,
-#vej2 {
+#vej2,
+#routeFrom,
+#routeTo,
+#routeVia {
   width: 100%;
   height: 40px;
   font-size: 16px;
@@ -85,32 +87,41 @@
 /* ============================
    RESULTATLISTER
 ============================ */
+
+/* Hoved-søg + rute-felter følger bredden på deres egne wrapper */
 #results,
-#results-vej1,
-#results-vej2 {
+#results-route-from,
+#results-route-to,
+#results-route-via {
   position: absolute;
   top: 100%;
   left: 0;
+  width: 100%;
   background: white;
   z-index: 2000;
   display: none;
   box-sizing: border-box;
 }
 
-/* Hoved-søgning: fylder hele sidens søgeboks */
-#results {
-  width: 100%;
-}
-
-/* Vej 1 / Vej 2: som før – fast bredde */
+/* Vej 1 / Vej 2 beholdes i den "gamle" bredde */
 #results-vej1,
 #results-vej2 {
+  position: absolute;
+  top: 100%;
+  left: 0;
   width: 391px;
+  background: white;
+  z-index: 2000;
+  display: none;
+  box-sizing: border-box;
 }
 
 #results li,
 #results-vej1 li,
-#results-vej2 li {
+#results-vej2 li,
+#results-route-from li,
+#results-route-to li,
+#results-route-via li {
   padding: 8px;
   background: #f9f9f9;
   border-bottom: 1px solid #ddd;
@@ -121,7 +132,10 @@
 }
 #results li:hover,
 #results-vej1 li:hover,
-#results-vej2 li:hover {
+#results-vej2 li:hover,
+#results-route-from li:hover,
+#results-route-to li:hover,
+#results-route-via li:hover {
   background: #eaeaea;
 }
 .highlight {
@@ -140,7 +154,6 @@
   box-sizing: border-box;
 }
 #infoContainer {
-  /* Placeres nu statisk inden i #sidebar og fylder hele bredden */
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -149,7 +162,6 @@
 }
 
 #infoBox {
-  /* Info-boksen vises ikke som standard; styres via script */
   display: none;
   position: relative;
   width: 100%;
@@ -162,7 +174,6 @@
   z-index: 1000;
 }
 
-/* Vi viser nu samlet info i én boks – ingen opdeling */
 #infoBox a {
   margin-right: 10px;
 }
@@ -205,8 +216,6 @@
   gap: 10px;
   margin-bottom: 8px;
 }
-
-/* ====== NYT: finjusteringer til infoboksen ====== */
 
 /* gør “Kommune … | Politikreds …” større */
 #infoBox #info-meta {
@@ -307,7 +316,7 @@
 }
 
 /* ============================
-   NY: Distance Options knapper
+   Distance Options knapper
 ============================ */
 #distanceOptions {
   position: absolute;
@@ -325,4 +334,17 @@
   padding: 6px 10px;
   font-size: 14px;
   cursor: pointer;
+}
+
+/* ============================
+   Rute-panel
+============================ */
+#routePanel {
+  margin-top: 8px;
+}
+
+.route-summary {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #333;
 }
