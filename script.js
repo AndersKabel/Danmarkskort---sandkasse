@@ -9,13 +9,17 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
 /*
  * OpenRouteService integration
  *
- * For at tilføje ruteplanlægning baseret på OpenStreetMap-data har vi
- * integreret OpenRouteService (ORS). ORS tilbyder en gratis plan med
- * 2.000 ruteopslag pr. dag og 40 pr. minut. Før du kan
- * anvende tjenesten skal du oprette en gratis konto og hente en API-nøgle.
- * Besøg https://openrouteservice.org/, opret en konto og generér en nøgle
- * under sektionen "API Keys" i din brugerprofil. Indsæt nøglen i
- * konstanten ORS_API_KEY nedenfor.
+ * Ruteplanlægning baseret på OpenStreetMap-data via OpenRouteService (ORS).
+ * Vi understøtter:
+ *  - Profil: bil, lastbil, cykel, gang
+ *  - Præference: fastest / shortest / recommended
+ *  - Undgå bestemte vejtyper (highways, tollways, ferries)
+ *  - Maks. hastighed
+ *  - Alternative ruter
+ *  - Undgå områder (GeoJSON polygon)
+ *
+ * Før brug: opret en gratis konto på https://openrouteservice.org/ og indsæt
+ * din API-nøgle i ORS_API_KEY herunder.
  */
 
 // TODO: Indsæt din ORS API-nøgle her
@@ -45,12 +49,45 @@ function getRepresentativeCoordinate(geometry) {
 }
 
 /**
- * Hjælper: kald ORS Directions API (driving-car) som GeoJSON
- * coordinates: array af [lon, lat]
- * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
+ * Hjælper: kald ORS Directions API som GeoJSON
+ *
+ * coordsArray: array af [lon, lat]
+ * uiOptions:
+ *   - profile: "driving-car", "driving-hgv", "cycling-regular", "foot-walking"
+ *   - preference: "fastest" | "shortest" | "recommended"
+ *   - avoidFeatures: ["highways","tollways","ferries", ...]
+ *   - maxSpeed: tal (km/t) eller null
+ *   - altCount: antal alternative ruter (0 = kun hovedrute)
+ *   - avoidPolygons: GeoJSON (Polygon/MultiPolygon) eller null
+ *
+ * Returnerer:
+ *   {
+ *     routes: [
+ *       { coords: [ [lon,lat], ... ], distance, duration },
+ *       ...
+ *     ]
+ *   }
  */
-async function requestORSRoute(coordsArray) {
-  const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+async function requestORSRoute(coordsArray, uiOptions = {}) {
+  const profile =
+    uiOptions.profile ||
+    "driving-car";
+
+  let preference =
+    uiOptions.preference ||
+    "recommended";
+
+  // Sikring mod stavefejl mv.
+  if (!["fastest", "shortest", "recommended"].includes(preference)) {
+    preference = "recommended";
+  }
+
+  const avoidFeatures = uiOptions.avoidFeatures || [];
+  const maxSpeed     = uiOptions.maxSpeed;
+  const altCount     = uiOptions.altCount || 0;
+  const avoidPolygons = uiOptions.avoidPolygons || null;
+
+  const url = `https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profile)}/geojson`;
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -58,7 +95,42 @@ async function requestORSRoute(coordsArray) {
     "Content-Type": "application/json; charset=utf-8"
   };
 
-  const body = JSON.stringify({ coordinates: coordsArray });
+  const bodyObj = {
+    coordinates: coordsArray,
+    preference: preference
+  };
+
+  const optionsObj = {};
+
+  // Undgå bestemte vejtyper
+  if (Array.isArray(avoidFeatures) && avoidFeatures.length > 0) {
+    optionsObj.avoid_features = avoidFeatures;
+  }
+
+  // Maks. hastighed – ORS vil ignorere hvis profilen ikke understøtter det
+  if (typeof maxSpeed === "number" && !Number.isNaN(maxSpeed)) {
+    optionsObj.maximum_speed = maxSpeed;
+  }
+
+  // Alternative ruter
+  if (altCount > 0) {
+    optionsObj.alternative_routes = {
+      target_count: altCount,
+      share_factor: 0.6,
+      weight_factor: 1.4
+    };
+  }
+
+  // Undgå områder (GeoJSON polygon / multipolygon)
+  if (avoidPolygons) {
+    optionsObj.avoid_polygons = avoidPolygons;
+  }
+
+  if (Object.keys(optionsObj).length > 0) {
+    bodyObj.options = optionsObj;
+  }
+
+  const body = JSON.stringify(bodyObj);
 
   const resp = await fetch(url, {
     method: "POST",
@@ -75,31 +147,38 @@ async function requestORSRoute(coordsArray) {
     throw new Error("ORS returnerede ingen rute.");
   }
 
-  const feature = data.features[0];
-  const geom = feature.geometry;
-  if (!geom || !Array.isArray(geom.coordinates)) {
-    throw new Error("ORS returnerede ukendt geometri.");
+  const routes = data.features.map(feature => {
+    const geom = feature.geometry;
+    if (!geom || !Array.isArray(geom.coordinates)) {
+      return null;
+    }
+
+    const props = feature.properties || {};
+    let distance = 0;
+    let duration = 0;
+
+    if (Array.isArray(props.segments) && props.segments.length > 0) {
+      props.segments.forEach(seg => {
+        if (typeof seg.distance === "number") distance += seg.distance;
+        if (typeof seg.duration === "number") duration += seg.duration;
+      });
+    } else if (props.summary) {
+      if (typeof props.summary.distance === "number") distance = props.summary.distance;
+      if (typeof props.summary.duration === "number") duration = props.summary.duration;
+    }
+
+    return {
+      coords: geom.coordinates, // [lon,lat]
+      distance: distance,
+      duration: duration
+    };
+  }).filter(r => r !== null);
+
+  if (routes.length === 0) {
+    throw new Error("ORS returnerede ingen gyldige ruter.");
   }
 
-  const props = feature.properties || {};
-  let distance = 0;
-  let duration = 0;
-
-  if (Array.isArray(props.segments) && props.segments.length > 0) {
-    props.segments.forEach(seg => {
-      if (typeof seg.distance === "number") distance += seg.distance;
-      if (typeof seg.duration === "number") duration += seg.duration;
-    });
-  } else if (props.summary) {
-    if (typeof props.summary.distance === "number") distance = props.summary.distance;
-    if (typeof props.summary.duration === "number") duration = props.summary.duration;
-  }
-
-  return {
-    coords: geom.coordinates, // [lon,lat]
-    distance: distance,
-    duration: duration
-  };
+  return { routes };
 }
 
 /**
@@ -135,7 +214,9 @@ async function resolveRouteCoord(text, cachedCoord) {
 
 /**
  * Planlæg rute ud fra rute-felterne (Fra / Til / Via)
- * Bruger OpenRouteService og tegner ruten på routeLayer.
+ * Bruger OpenRouteService og tegner ruterne på routeLayer.
+ *
+ * Hovedrute = blå, alternativruter = grå stiplet.
  */
 async function planRouteORS() {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
@@ -153,6 +234,61 @@ async function planRouteORS() {
       return;
     }
 
+    // Læs ruteindstillinger fra UI
+    const profileSel       = document.getElementById("routeProfile");
+    const preferenceSel    = document.getElementById("routePreference");
+    const maxSpeedInput    = document.getElementById("routeMaxSpeed");
+    const altCountSel      = document.getElementById("routeAltCount");
+    const avoidPolyTextarea= document.getElementById("routeAvoidPolygons");
+    const avoidFeatureCbs  = document.querySelectorAll(".routeAvoidFeature");
+
+    const profile = profileSel ? profileSel.value : "driving-car";
+    let preference = preferenceSel ? preferenceSel.value : "recommended";
+    if (!["fastest","shortest","recommended"].includes(preference)) {
+      preference = "recommended";
+    }
+
+    const avoidFeatures = [];
+    avoidFeatureCbs.forEach(cb => {
+      if (cb.checked) avoidFeatures.push(cb.value);
+    });
+
+    let maxSpeed = null;
+    if (maxSpeedInput && maxSpeedInput.value.trim() !== "") {
+      const val = parseInt(maxSpeedInput.value.trim(), 10);
+      if (!Number.isNaN(val)) {
+        maxSpeed = val;
+      }
+    }
+
+    let altCount = 0;
+    if (altCountSel) {
+      const valAlt = parseInt(altCountSel.value, 10);
+      if (!Number.isNaN(valAlt) && valAlt > 0) {
+        altCount = valAlt;
+      }
+    }
+
+    let avoidPolygons = null;
+    if (avoidPolyTextarea && avoidPolyTextarea.value.trim() !== "") {
+      try {
+        avoidPolygons = JSON.parse(avoidPolyTextarea.value.trim());
+      } catch (e) {
+        console.warn("Teksten under 'Undgå områder' er ikke gyldig JSON – ignorerer den.", e);
+        alert("Teksten under 'Undgå områder' er ikke gyldig JSON. Den bliver ignoreret i rute-beregningen.");
+      }
+    }
+
+    const uiOptions = {
+      profile,
+      preference,
+      avoidFeatures,
+      maxSpeed,
+      altCount,
+      avoidPolygons
+    };
+
+    // Find koordinater for Fra / Til / Via
     const fromCoord = await resolveRouteCoord(fromText, routeFromCoord);
     const toCoord   = await resolveRouteCoord(toText, routeToCoord);
     let viaCoord    = null;
@@ -171,32 +307,49 @@ async function planRouteORS() {
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const routeInfo = await requestORSRoute(coordsArray);
+    const routeInfo = await requestORSRoute(coordsArray, uiOptions);
 
-    // Tegn ruten
+    // Tegn ruter
     routeLayer.clearLayers();
-    const latLngs = routeInfo.coords.map(c => [c[1], c[0]]);
-    const poly = L.polyline(latLngs, {
-      color: "blue",
-      weight: 5,
-      opacity: 0.7
-    }).addTo(routeLayer);
+    let allLatLngs = [];
+
+    routeInfo.routes.forEach((r, index) => {
+      const latLngs = r.coords.map(c => [c[1], c[0]]);
+      allLatLngs = allLatLngs.concat(latLngs);
+
+      const isMain = index === 0;
+
+      L.polyline(latLngs, {
+        color: isMain ? "blue" : "gray",
+        weight: isMain ? 5 : 3,
+        opacity: 0.7,
+        dashArray: isMain ? null : "6,8"
+      }).addTo(routeLayer);
+    });
 
     if (!map.hasLayer(routeLayer)) {
       routeLayer.addTo(map);
     }
-    map.fitBounds(poly.getBounds());
 
+    if (allLatLngs.length > 0) {
+      map.fitBounds(L.latLngBounds(allLatLngs));
+    }
+
+    // Opdater rute-sammendrag (kun hovedrute)
     const routeSummaryEl = document.getElementById("routeSummary");
-    if (routeSummaryEl) {
+    if (routeSummaryEl && routeInfo.routes[0]) {
+      const main = routeInfo.routes[0];
       let parts = [];
-      if (routeInfo.distance != null) {
-        const km = routeInfo.distance / 1000;
+      if (main.distance != null) {
+        const km = main.distance / 1000;
         parts.push(`Længde: ${km.toFixed(1)} km`);
       }
-      if (routeInfo.duration != null) {
-        const min = Math.round(routeInfo.duration / 60);
+      if (main.duration != null) {
+        const min = Math.round(main.duration / 60);
         parts.push(`Tid: ca. ${min} min`);
+      }
+      if (routeInfo.routes.length > 1) {
+        parts.push(`Alternative ruter: ${routeInfo.routes.length - 1}`);
       }
       routeSummaryEl.textContent = parts.join(" | ");
     }
@@ -1840,12 +1993,14 @@ document.getElementById("btn100").addEventListener("click", function() {
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
+
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
     });
   }
+
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -1868,6 +2023,21 @@ document.addEventListener("DOMContentLoaded", function() {
         routeViaList.innerHTML = "";
         routeViaList.style.display = "none";
       }
+
+      // Nulstil rute-indstillinger
+      const profileSel       = document.getElementById("routeProfile");
+      const preferenceSel    = document.getElementById("routePreference");
+      const maxSpeedInput    = document.getElementById("routeMaxSpeed");
+      const altCountSel      = document.getElementById("routeAltCount");
+      const avoidPolyTextarea= document.getElementById("routeAvoidPolygons");
+      const avoidFeatureCbs  = document.querySelectorAll(".routeAvoidFeature");
+
+      if (profileSel)    profileSel.value    = "driving-car";
+      if (preferenceSel) preferenceSel.value = "recommended";
+      if (maxSpeedInput) maxSpeedInput.value = "";
+      if (altCountSel)   altCountSel.value   = "0";
+      if (avoidPolyTextarea) avoidPolyTextarea.value = "";
+      avoidFeatureCbs.forEach(cb => cb.checked = false);
 
       const routeSummaryEl = document.getElementById("routeSummary");
       if (routeSummaryEl) {
