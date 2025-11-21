@@ -617,6 +617,7 @@ map.on('click', function(e) {
     .then(r => r.json())
     .then(data => {
       updateInfoBox(data, lat, lon);
+      fillRouteFieldsFromClick(data, lat, lon);
     })
     .catch(err => console.error("Reverse geocoding fejl:", err));
 });
@@ -816,12 +817,14 @@ function addClearButton(inputElement, listElement) {
   btn.addEventListener("click", function () {
     inputElement.value = "";
     listElement.innerHTML = "";
+    listElement.style.display = "none";
     btn.style.display = "none";
     resetCoordinateBox();
   });
   inputElement.addEventListener("keydown", function (e) {
     if (e.key === "Backspace" && inputElement.value.length === 0) {
       listElement.innerHTML = "";
+      listElement.style.display = "none";
       resetCoordinateBox();
     }
   });
@@ -861,6 +864,33 @@ if (routeToggleBtn && routePanel) {
   routeToggleBtn.addEventListener("click", function() {
     routePanel.classList.toggle("hidden");
   });
+}
+
+/***************************************************
+ * Hjælper: udfyld rute-felter ved klik på kort
+ ***************************************************/
+function fillRouteFieldsFromClick(data, lat, lon) {
+  if (!routePanel || routePanel.classList.contains("hidden")) return;
+
+  const vejnavn = data?.adgangsadresse?.vejnavn || data.vejnavn || "";
+  const husnr   = data?.adgangsadresse?.husnr   || data.husnr   || "";
+  const postnr  = data?.adgangsadresse?.postnr  || data.postnr  || "";
+  const postnavn = data?.adgangsadresse?.postnrnavn || data.postnrnavn || "";
+
+  if (!vejnavn && !postnr && !postnavn) return;
+
+  const addrText = `${vejnavn} ${husnr}, ${postnr} ${postnavn}`.trim();
+
+  if (routeFromInput && !routeFromInput.value) {
+    routeFromInput.value = addrText;
+    routeFromCoord = [lat, lon];
+  } else if (routeToInput && !routeToInput.value) {
+    routeToInput.value = addrText;
+    routeToCoord = [lat, lon];
+  } else if (routeViaInput) {
+    routeViaInput.value = addrText;
+    routeViaCoord = [lat, lon];
+  }
 }
 
 /***************************************************
@@ -1038,6 +1068,7 @@ function resetInfoBox() {
 vej1Input.parentElement.querySelector(".clear-button").addEventListener("click", function() {
   vej1Input.value = "";
   vej1List.innerHTML = "";
+  vej1List.style.display = "none";
   document.getElementById("infoBox").style.display = "none";
   resetCoordinateBox();
 });
@@ -1045,6 +1076,7 @@ vej1Input.parentElement.querySelector(".clear-button").addEventListener("click",
 vej2Input.parentElement.querySelector(".clear-button").addEventListener("click", function() {
   vej2Input.value = "";
   vej2List.innerHTML = "";
+  vej2List.style.display = "none";
   document.getElementById("infoBox").style.display = "none";
   resetCoordinateBox();
 });
@@ -1164,16 +1196,13 @@ function setupRouteInputHandlers(inputElement, listElement, type) {
   });
 
   inputElement.addEventListener("keydown", function(e) {
-    let items, idxName;
+    let items;
     if (type === "from") {
       items = routeFromItems;
-      idxName = "routeFromIndex";
     } else if (type === "to") {
       items = routeToItems;
-      idxName = "routeToIndex";
     } else {
       items = routeViaItems;
-      idxName = "routeViaIndex";
     }
     if (!items || items.length === 0) return;
 
@@ -1815,6 +1844,37 @@ document.addEventListener("DOMContentLoaded", function() {
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
+    });
+  }
+  const clearRouteBtn = document.getElementById("clearRouteBtn");
+  if (clearRouteBtn) {
+    clearRouteBtn.addEventListener("click", function() {
+      if (routeFromInput) routeFromInput.value = "";
+      if (routeToInput)   routeToInput.value   = "";
+      if (routeViaInput)  routeViaInput.value  = "";
+      routeFromCoord = null;
+      routeToCoord   = null;
+      routeViaCoord  = null;
+
+      if (routeFromList) {
+        routeFromList.innerHTML = "";
+        routeFromList.style.display = "none";
+      }
+      if (routeToList) {
+        routeToList.innerHTML = "";
+        routeToList.style.display = "none";
+      }
+      if (routeViaList) {
+        routeViaList.innerHTML = "";
+        routeViaList.style.display = "none";
+      }
+
+      const routeSummaryEl = document.getElementById("routeSummary");
+      if (routeSummaryEl) {
+        routeSummaryEl.textContent = "";
+      }
+
+      routeLayer.clearLayers();
     });
   }
 });
