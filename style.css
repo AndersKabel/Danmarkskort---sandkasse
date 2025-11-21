@@ -88,11 +88,8 @@
    RESULTATLISTER
 ============================ */
 
-/* Hoved-søg + rute-felter følger bredden på deres egne wrapper */
-#results,
-#results-route-from,
-#results-route-to,
-#results-route-via {
+/* Hoved-søg følger bredden på søgecontaineren */
+#results {
   position: absolute;
   top: 100%;
   left: 0;
@@ -103,9 +100,12 @@
   box-sizing: border-box;
 }
 
-/* Vej 1 / Vej 2 beholdes i den "gamle" bredde */
+/* Vej 1 / Vej 2 / Rute-felter har bred liste (som den "almindelige" liste) */
 #results-vej1,
-#results-vej2 {
+#results-vej2,
+#results-route-from,
+#results-route-to,
+#results-route-via {
   position: absolute;
   top: 100%;
   left: 0;
