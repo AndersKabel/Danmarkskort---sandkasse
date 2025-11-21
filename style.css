@@ -343,20 +343,17 @@
 /* Knapperne Start + Ryd i rute-panelet */
 .route-button-group {
   display: flex;
-  flex-direction: column;        /* læg knapperne oven på hinanden */
-  justify-content: space-between;
-  width: 45px;                   /* smal boks til højre for Via-feltet */
-  height: 58px;                  /* samme visuelle højde som input-feltet (40 + 2*8 padding + 2*1 border) */
-  box-sizing: border-box;
+  flex-direction: row;
+  gap: 6px;
+  width: 80px;          /* samme samlede bredde som den gamle Start-knap */
 }
 
 .route-button-group .route-btn {
-  flex: 1;                       /* del højden 50/50 */
-  height: auto;
-  font-size: 12px;               /* så teksten kan være der */
+  flex: 1;              /* del pladsen 50/50 */
+  height: 40px;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
-  line-height: 1;
 }
 
 #routePanel {
@@ -367,4 +364,62 @@
   margin-top: 5px;
   font-size: 13px;
   color: #333;
+}
+
+/* Rute-indstillinger */
+.route-options {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(245, 245, 245, 0.9);
+  font-size: 13px;
+}
+
+.route-options-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.route-options-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.route-options select,
+.route-options input[type="number"] {
+  height: 28px;
+  font-size: 13px;
+}
+
+.route-avoid-features {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.route-avoid-features legend {
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+.route-avoid-features label {
+  font-weight: normal;
+}
+
+.route-avoid-areas-label {
+  flex-direction: column;
+  align-items: flex-start !important;
+}
+
+#routeAvoidPolygons {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-size: 12px;
 }
