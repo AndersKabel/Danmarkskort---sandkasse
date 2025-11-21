@@ -339,6 +339,21 @@
 /* ============================
    Rute-panel
 ============================ */
+
+/* Knapperne Start + Ryd i rute-panelet */
+.route-button-group {
+  display: flex;
+  gap: 6px;
+  width: 80px;          /* samme samlede bredde som den gamle Start-knap */
+}
+
+.route-button-group .route-btn {
+  flex: 1;              /* del pladsen 50/50 */
+  height: 40px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 #routePanel {
   margin-top: 8px;
 }
@@ -348,3 +363,4 @@
   font-size: 13px;
   color: #333;
 }
+
