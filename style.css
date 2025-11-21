@@ -343,17 +343,19 @@
 /* Knapperne Start + Ryd i rute-panelet */
 .route-button-group {
   display: flex;
-  gap: 6px;
-  width: 80px;          /* samme samlede bredde som den gamle Start-knap */
+  flex-direction: column;       /* læg knapperne oven på hinanden */
+  justify-content: space-between;
+  width: 45px;                  /* smal boks til højre for Via-feltet */
+  height: 40px;                 /* samme højde som input-feltet */
 }
 
 .route-button-group .route-btn {
-  flex: 1 1 0;          /* del pladsen 50/50 uanset tekstbredde */
-  min-width: 0;         /* tillad at knapperne bliver lige brede */
-  height: 40px;
-  font-size: 14px;
+  flex: 1;                      /* del højden 50/50 */
+  height: auto;
+  font-size: 12px;              /* lidt mindre så teksten kan være der */
   cursor: pointer;
-  text-align: center;
+  padding: 0;
+  line-height: 1;
 }
 
 #routePanel {
