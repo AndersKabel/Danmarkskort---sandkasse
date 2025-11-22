@@ -451,9 +451,7 @@ const overlayMaps = {
   "DB Journal": dbJournalLayer,
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
-  "Rutenummereret vejnet": rutenummerLayer,
-  // Ruteplan via OpenRouteService (rutelag)
-  "Rute (ORS)": routeLayer
+  "Rutenummereret vejnet": rutenummerLayer
 };
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
