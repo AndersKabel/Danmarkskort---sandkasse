@@ -7,19 +7,18 @@ proj4.defs("EPSG:25832", "+proj=utm +zone=32 +ellps=GRS80 +datum=ETRS89 +units=m
 const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
 
 /*
- * OpenRouteService integration – forenklet
+ * OpenRouteService integration
  *
- * Vi bruger nu en stabil, enkel model:
- *  - Én rute (ingen alternative ruter)
- *  - Valgfri "via"-punkt
- *  - Profil: bil / lastbil / cykel / gang
- *  - Præference i UI: Hurtigste / Korteste / Anbefalet
- *
- * I API-kaldet bruger vi kun 'fastest' og 'shortest'.
- * UI-værdien "recommended" bliver oversat til "fastest" under hjelmen.
+ * For at tilføje ruteplanlægning baseret på OpenStreetMap-data har vi
+ * integreret OpenRouteService (ORS). ORS tilbyder en gratis plan med
+ * 2.000 ruteopslag pr. dag og 40 pr. minut. Før du kan
+ * anvende tjenesten skal du oprette en gratis konto og hente en API-nøgle.
+ * Besøg https://openrouteservice.org/, opret en konto og generér en nøgle
+ * under sektionen "API Keys" i din brugerprofil. Indsæt nøglen i
+ * konstanten ORS_API_KEY nedenfor.
  */
 
-// TODO: Indsæt din ORS API-nøgle her (du har allerede en)
+// TODO: Indsæt din ORS API-nøgle her
 const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU2ZTA5ODhhNDE5MDQ1MjNiY2QwM2QyZjcyNWViZmU5IiwiaCI6Im11cm11cjY0In0=";
 
 // Lag til at vise ruter fra ORS. Tilføjes til overlayMaps senere.
@@ -27,6 +26,7 @@ var routeLayer = L.layerGroup();
 
 /**
  * Udtræk et repræsentativt punkt fra en vejgeometri
+ * (beholdt som hjælper hvis du senere vil lave ruter ud fra vej-geometrier)
  */
 function getRepresentativeCoordinate(geometry) {
   if (!geometry || !Array.isArray(geometry.coordinates)) return null;
@@ -45,21 +45,12 @@ function getRepresentativeCoordinate(geometry) {
 }
 
 /**
- * Hjælper: kald ORS Directions API som GeoJSON
- *
- * coordsArray: array af [lon, lat]
- * profile: "driving-car", "driving-hgv", "cycling-regular", "foot-walking"
- * preference: "fastest" eller "shortest"
- *
- * Returnerer:
- *   {
- *     routes: [
- *       { coords: [ [lon,lat], ... ], distance, duration }
- *     ]
- *   }
+ * Hjælper: kald ORS Directions API (driving-car) som GeoJSON
+ * coordinates: array af [lon, lat]
+ * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
  */
-async function requestORSRoute(coordsArray, profile = "driving-car", preference = "fastest") {
-  const url = `https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profile)}/geojson`;
+async function requestORSRoute(coordsArray) {
+  const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -67,15 +58,12 @@ async function requestORSRoute(coordsArray, profile = "driving-car", preference 
     "Content-Type": "application/json; charset=utf-8"
   };
 
-  const bodyObj = {
-    coordinates: coordsArray,
-    preference: preference
-  };
+  const body = JSON.stringify({ coordinates: coordsArray });
 
   const resp = await fetch(url, {
     method: "POST",
     headers: headers,
-    body: JSON.stringify(bodyObj)
+    body: body
   });
 
   if (!resp.ok) {
@@ -87,42 +75,36 @@ async function requestORSRoute(coordsArray, profile = "driving-car", preference 
     throw new Error("ORS returnerede ingen rute.");
   }
 
-  const routes = data.features.map(feature => {
-    const geom = feature.geometry;
-    if (!geom || !Array.isArray(geom.coordinates)) {
-      return null;
-    }
-
-    const props = feature.properties || {};
-    let distance = 0;
-    let duration = 0;
-
-    if (Array.isArray(props.segments) && props.segments.length > 0) {
-      props.segments.forEach(seg => {
-        if (typeof seg.distance === "number") distance += seg.distance;
-        if (typeof seg.duration === "number") duration += seg.duration;
-      });
-    } else if (props.summary) {
-      if (typeof props.summary.distance === "number") distance = props.summary.distance;
-      if (typeof props.summary.duration === "number") duration = props.summary.duration;
-    }
-
-    return {
-      coords: geom.coordinates, // [lon,lat]
-      distance: distance,
-      duration: duration
-    };
-  }).filter(r => r !== null);
-
-  if (routes.length === 0) {
-    throw new Error("ORS returnerede ingen gyldige ruter.");
+  const feature = data.features[0];
+  const geom = feature.geometry;
+  if (!geom || !Array.isArray(geom.coordinates)) {
+    throw new Error("ORS returnerede ukendt geometri.");
   }
 
-  return { routes };
+  const props = feature.properties || {};
+  let distance = 0;
+  let duration = 0;
+
+  if (Array.isArray(props.segments) && props.segments.length > 0) {
+    props.segments.forEach(seg => {
+      if (typeof seg.distance === "number") distance += seg.distance;
+      if (typeof seg.duration === "number") duration += seg.duration;
+    });
+  } else if (props.summary) {
+    if (typeof props.summary.distance === "number") distance = props.summary.distance;
+    if (typeof props.summary.duration === "number") duration = props.summary.duration;
+  }
+
+  return {
+    coords: geom.coordinates, // [lon,lat]
+    distance: distance,
+    duration: duration
+  };
 }
 
 /**
  * Hjælper: find koordinater (lat,lon) for en adresse-tekst
+ * Bruger evt. allerede gemte koordinater, ellers Dataforsyningen.
  */
 async function resolveRouteCoord(text, cachedCoord) {
   if (cachedCoord && Array.isArray(cachedCoord) && cachedCoord.length === 2) {
@@ -153,9 +135,7 @@ async function resolveRouteCoord(text, cachedCoord) {
 
 /**
  * Planlæg rute ud fra rute-felterne (Fra / Til / Via)
- * Bruger OpenRouteService og tegner ruten(e) på routeLayer.
- *
- * Hovedrute = blå (der kommer kun én rute med den nuværende opsætning).
+ * Bruger OpenRouteService og tegner ruten på routeLayer.
  */
 async function planRouteORS() {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
@@ -173,25 +153,6 @@ async function planRouteORS() {
       return;
     }
 
-    // Læs profil + præference fra UI
-    const profileSel    = document.getElementById("routeProfile");
-    const preferenceSel = document.getElementById("routePreference");
-
-    const profile = profileSel ? profileSel.value : "driving-car";
-
-    // UI-værdier: fastest / shortest / recommended
-    let uiPreference = preferenceSel ? preferenceSel.value : "recommended";
-
-    // Oversættelse til ORS-værdier (kun fastest/shortest)
-    let orsPreference;
-    if (uiPreference === "shortest") {
-      orsPreference = "shortest";
-    } else {
-      // "fastest" eller "recommended" (eller noget ukendt) -> "fastest"
-      orsPreference = "fastest";
-    }
-
-    // Find koordinater for Fra / Til / Via
     const fromCoord = await resolveRouteCoord(fromText, routeFromCoord);
     const toCoord   = await resolveRouteCoord(toText, routeToCoord);
     let viaCoord    = null;
@@ -210,45 +171,31 @@ async function planRouteORS() {
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const routeInfo = await requestORSRoute(coordsArray, profile, orsPreference);
+    const routeInfo = await requestORSRoute(coordsArray);
 
-    // Tegn ruten(e) – reelt kun én
+    // Tegn ruten
     routeLayer.clearLayers();
-    let allLatLngs = [];
-
-    routeInfo.routes.forEach((r, index) => {
-      const latLngs = r.coords.map(c => [c[1], c[0]]);
-      allLatLngs = allLatLngs.concat(latLngs);
-
-      const isMain = index === 0;
-
-      L.polyline(latLngs, {
-        color: isMain ? "blue" : "gray",
-        weight: isMain ? 5 : 3,
-        opacity: 0.7,
-        dashArray: isMain ? null : "6,8"
-      }).addTo(routeLayer);
-    });
+    const latLngs = routeInfo.coords.map(c => [c[1], c[0]]);
+    const poly = L.polyline(latLngs, {
+      color: "blue",
+      weight: 5,
+      opacity: 0.7
+    }).addTo(routeLayer);
 
     if (!map.hasLayer(routeLayer)) {
       routeLayer.addTo(map);
     }
+    map.fitBounds(poly.getBounds());
 
-    if (allLatLngs.length > 0) {
-      map.fitBounds(L.latLngBounds(allLatLngs));
-    }
-
-    // Opdater rute-sammendrag (kun hovedrute)
     const routeSummaryEl = document.getElementById("routeSummary");
-    if (routeSummaryEl && routeInfo.routes[0]) {
-      const main = routeInfo.routes[0];
+    if (routeSummaryEl) {
       let parts = [];
-      if (main.distance != null) {
-        const km = main.distance / 1000;
+      if (routeInfo.distance != null) {
+        const km = routeInfo.distance / 1000;
         parts.push(`Længde: ${km.toFixed(1)} km`);
       }
-      if (main.duration != null) {
-        const min = Math.round(main.duration / 60);
+      if (routeInfo.duration != null) {
+        const min = Math.round(routeInfo.duration / 60);
         parts.push(`Tid: ca. ${min} min`);
       }
       routeSummaryEl.textContent = parts.join(" | ");
@@ -504,7 +451,9 @@ const overlayMaps = {
   "DB Journal": dbJournalLayer,
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
-  "Rutenummereret vejnet": rutenummerLayer
+  "Rutenummereret vejnet": rutenummerLayer,
+  // Ruteplan via OpenRouteService (rutelag)
+  "Rute (ORS)": routeLayer
 };
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
@@ -1107,6 +1056,7 @@ vej2Input.addEventListener("keydown", function(e) {
 function highlightVej2Item() {
   vej2Items.forEach(li => li.classList.remove("highlight"));
   if (vej2CurrentIndex >= 0 && vej2CurrentIndex < vej2Items.length) {
+    vej2CurrentIndex;
     vej2Items[vej2CurrentIndex].classList.add("highlight");
   }
 }
@@ -1416,6 +1366,51 @@ function doSearchStrandposter(query) {
 }
 
 /***************************************************
+ * doSearchNominatim => fallback til global søgning
+ * Bruges KUN hvis den danske søgning ikke finder noget.
+ ***************************************************/
+function doSearchNominatim(query, listElement) {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&addressdetails=1&limit=10&accept-language=da`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      listElement.innerHTML = "";
+      searchItems = [];
+      searchCurrentIndex = -1;
+
+      if (!Array.isArray(data) || data.length === 0) {
+        listElement.style.display = "none";
+        return;
+      }
+
+      data.forEach(item => {
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+        const display = item.display_name || query;
+        let li = document.createElement("li");
+        li.innerHTML = `🌍 ${display}`;
+        li.addEventListener("click", function() {
+          setCoordinateBox(lat, lon);
+          placeMarkerAndZoom([lat, lon], display);
+          listElement.innerHTML = "";
+          listElement.style.display = "none";
+        });
+        listElement.appendChild(li);
+        searchItems.push(li);
+      });
+
+      listElement.style.display = searchItems.length > 0 ? "block" : "none";
+    })
+    .catch(err => {
+      console.error("Fejl i doSearchNominatim:", err);
+      listElement.style.display = "none";
+    });
+}
+
+/***************************************************
  * doSearch => kombinerer adresser, stednavne, specialsteder og strandposter
  ***************************************************/
 function doSearch(query, listElement) {
@@ -1445,6 +1440,7 @@ function doSearch(query, listElement) {
     listElement.innerHTML = "";
     searchItems = [];
     searchCurrentIndex = -1;
+
     let addrResults = (addrData || []).map(item => ({
       type: "adresse",
       tekst: item.tekst,
@@ -1483,6 +1479,13 @@ function doSearch(query, listElement) {
       if (!aIsName && bIsName) return 1;
       return getSortPriority(a, query) - getSortPriority(b, query);
     });
+
+    // Hvis der INTET dansk / lokalt resultat er, falder vi tilbage til global søgning (Nominatim)
+    if (combined.length === 0) {
+      doSearchNominatim(query, listElement);
+      return;
+    }
+
     combined.forEach(obj => {
       let li = document.createElement("li");
       if (obj.type === "strandpost") {
@@ -1891,16 +1894,12 @@ document.getElementById("btn100").addEventListener("click", function() {
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
-
-  // Start-knap -> beregn rute
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
     });
   }
-
-  // Clear-knap -> ryd felter + rute + marker mv.
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -1924,52 +1923,13 @@ document.addEventListener("DOMContentLoaded", function() {
         routeViaList.style.display = "none";
       }
 
-      // Nulstil rute-indstillinger (profil + præference)
-      const profileSel    = document.getElementById("routeProfile");
-      const preferenceSel = document.getElementById("routePreference");
-
-      if (profileSel)    profileSel.value    = "driving-car";
-      if (preferenceSel) preferenceSel.value = "recommended";
-
       const routeSummaryEl = document.getElementById("routeSummary");
       if (routeSummaryEl) {
         routeSummaryEl.textContent = "";
       }
 
-      // Fjern selve ruten
+      // Ryd også evt. rute-marker på kortet
       routeLayer.clearLayers();
-
-      // *** NYT: fjern kort-markør + infobokse + koordinatboks + kommune-overlay ***
-      if (currentMarker) {
-        map.removeLayer(currentMarker);
-        currentMarker = null;
-      }
-      resetCoordinateBox();
-      const infoBoxEl = document.getElementById("infoBox");
-      const statsBoxEl = document.getElementById("statsvejInfoBox");
-      const kommuneOverlayEl = document.getElementById("kommuneOverlay");
-      if (infoBoxEl) infoBoxEl.style.display = "none";
-      if (statsBoxEl) statsBoxEl.style.display = "none";
-      if (kommuneOverlayEl) kommuneOverlayEl.style.display = "none";
     });
-  }
-
-  // Automatisk re-beregning når profil / præference ændres
-  const profileSel    = document.getElementById("routeProfile");
-  const preferenceSel = document.getElementById("routePreference");
-
-  function autoReplanIfPossible() {
-    const hasFrom = routeFromInput && routeFromInput.value.trim() !== "";
-    const hasTo   = routeToInput   && routeToInput.value.trim()   !== "";
-    if (hasFrom && hasTo) {
-      planRouteORS();
-    }
-  }
-
-  if (profileSel) {
-    profileSel.addEventListener("change", autoReplanIfPossible);
-  }
-  if (preferenceSel) {
-    preferenceSel.addEventListener("change", autoReplanIfPossible);
   }
 });
