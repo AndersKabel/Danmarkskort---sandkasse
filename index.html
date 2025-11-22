@@ -71,7 +71,7 @@
           </div>
         </div>
 
-        <!-- Rute-indstillinger -->
+        <!-- Rute-indstillinger (forenklet: kun profil + præference) -->
         <div class="route-options">
           <div class="route-options-row">
             <label>
@@ -90,38 +90,6 @@
                 <option value="shortest">Korteste</option>
                 <option value="recommended" selected>Anbefalet</option>
               </select>
-            </label>
-          </div>
-
-          <div class="route-options-row">
-            <fieldset class="route-avoid-features">
-              <legend>Undgå vejtyper:</legend>
-              <label><input type="checkbox" class="routeAvoidFeature" value="highways"> Motorveje</label>
-              <label><input type="checkbox" class="routeAvoidFeature" value="tollways"> Vejafgifter</label>
-              <label><input type="checkbox" class="routeAvoidFeature" value="ferries"> Færger</label>
-            </fieldset>
-          </div>
-
-          <div class="route-options-row">
-            <label>
-              Maks. hastighed (km/t):
-              <input type="number" id="routeMaxSpeed" min="10" max="200" step="10" placeholder="fx 80">
-            </label>
-            <label>
-              Alternative ruter:
-              <select id="routeAltCount">
-                <option value="0" selected>Kun én rute</option>
-                <option value="1">1 ekstra</option>
-                <option value="2">2 ekstra</option>
-                <option value="3">3 ekstra</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="route-options-row">
-            <label class="route-avoid-areas-label">
-              Undgå områder (GeoJSON polygon – valgfrit):
-              <textarea id="routeAvoidPolygons" rows="2" placeholder='{"type":"Polygon","coordinates":[[...]...]}'></textarea>
             </label>
           </div>
         </div>
