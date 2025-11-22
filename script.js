@@ -1218,7 +1218,7 @@ function highlightRouteItem(type) {
   if (!items) return;
   items.forEach(li => li.classList.remove("highlight"));
   if (idx >= 0 && idx < items.length) {
-    li.classList.add("highlight");
+    items[idx].classList.add("highlight");
   }
 }
 
@@ -1902,7 +1902,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Clear-knap -> ryd felter + rute
+  // Clear-knap -> ryd felter + rute + marker mv.
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -1938,7 +1938,21 @@ document.addEventListener("DOMContentLoaded", function() {
         routeSummaryEl.textContent = "";
       }
 
+      // Fjern selve ruten
       routeLayer.clearLayers();
+
+      // *** NYT: fjern kort-markør + infobokse + koordinatboks + kommune-overlay ***
+      if (currentMarker) {
+        map.removeLayer(currentMarker);
+        currentMarker = null;
+      }
+      resetCoordinateBox();
+      const infoBoxEl = document.getElementById("infoBox");
+      const statsBoxEl = document.getElementById("statsvejInfoBox");
+      const kommuneOverlayEl = document.getElementById("kommuneOverlay");
+      if (infoBoxEl) infoBoxEl.style.display = "none";
+      if (statsBoxEl) statsBoxEl.style.display = "none";
+      if (kommuneOverlayEl) kommuneOverlayEl.style.display = "none";
     });
   }
 
