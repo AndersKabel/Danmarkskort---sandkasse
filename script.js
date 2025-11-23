@@ -459,8 +459,6 @@ const overlayMaps = {
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
   "Rutenummereret vejnet": rutenummerLayer,
-  // Ruteplan via OpenRouteService (rutelag)
-  "Rute (ORS)": routeLayer,
   // NYT: overlay til at beholde markører
   "Behold markører": keepMarkersLayer
 };
