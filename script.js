@@ -102,9 +102,105 @@ async function requestORSRoute(coordsArray) {
   };
 }
 
+/***************************************************
+ * ORS geocoding helpers
+ ***************************************************/
+function isInDenmark(lat, lon) {
+  // Groft bbox-check – fint nok til at skelne DK / udland
+  return lat >= 54.4 && lat <= 57.9 && lon >= 7.5 && lon <= 15.5;
+}
+
+function formatORSAddress(props) {
+  if (!props) return "Ukendt adresse";
+  if (props.label) return props.label;
+
+  let parts = [];
+
+  if (props.name) parts.push(props.name);
+
+  let streetParts = [];
+  if (props.street) streetParts.push(props.street);
+  if (props.housenumber) streetParts.push(props.housenumber);
+  if (streetParts.length) parts.push(streetParts.join(" "));
+
+  let townParts = [];
+  if (props.postalcode) townParts.push(props.postalcode);
+  if (props.locality) {
+    townParts.push(props.locality);
+  } else if (props.city) {
+    townParts.push(props.city);
+  }
+  if (townParts.length) parts.push(townParts.join(" "));
+
+  if (props.region && !parts.includes(props.region)) {
+    parts.push(props.region);
+  }
+  if (props.country) {
+    parts.push(props.country);
+  }
+
+  if (parts.length === 0 && props.confidence != null) {
+    return "Ukendt adresse";
+  }
+  return parts.join(", ");
+}
+
+async function orsGeocodeSearch(text, size = 5) {
+  if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return [];
+  const url =
+    "https://api.openrouteservice.org/geocode/search" +
+    `?api_key=${ORS_API_KEY}` +
+    `&text=${encodeURIComponent(text)}` +
+    `&size=${size}`;
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.error("ORS geocoding fejl:", resp.status, resp.statusText);
+      return [];
+    }
+    const data = await resp.json();
+    if (!data.features || !Array.isArray(data.features)) return [];
+    return data.features;
+  } catch (err) {
+    console.error("ORS geocoding fejl:", err);
+    return [];
+  }
+}
+
+async function reverseGeocodeORS(lat, lon) {
+  if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return null;
+
+  const url =
+    "https://api.openrouteservice.org/geocode/reverse" +
+    `?api_key=${ORS_API_KEY}` +
+    `&point.lat=${lat}` +
+    `&point.lon=${lon}` +
+    `&size=1`;
+
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.error("ORS reverse geocoding fejl:", resp.status, resp.statusText);
+      return null;
+    }
+    const data = await resp.json();
+    if (Array.isArray(data.features) && data.features.length > 0) {
+      return data.features[0];
+    }
+    return null;
+  } catch (err) {
+    console.error("ORS reverse geocoding fejl:", err);
+    return null;
+  }
+}
+
 /**
  * Hjælper: find koordinater (lat,lon) for en adresse-tekst
- * Bruger evt. allerede gemte koordinater, ellers Dataforsyningen.
+ * 1) Genbrug cachedCoord, hvis den findes
+ * 2) Hvis tekst er "lat, lon" => brug direkte
+ * 3) Prøv Dataforsyningen
+ * 4) Fald tilbage til ORS-geocoding (globalt) hvis DF ikke giver noget
  */
 async function resolveRouteCoord(text, cachedCoord) {
   if (cachedCoord && Array.isArray(cachedCoord) && cachedCoord.length === 2) {
@@ -112,30 +208,59 @@ async function resolveRouteCoord(text, cachedCoord) {
   }
   if (!text || text.trim().length === 0) return null;
 
+  const trimmed = text.trim();
+
+  // Hvis brugeren har tastet koordinater direkte
+  const coordRegex = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/;
+  const coordMatch = trimmed.match(coordRegex);
+  if (coordMatch) {
+    const latNum = parseFloat(coordMatch[1]);
+    const lonNum = parseFloat(coordMatch[2]);
+    if (!Number.isNaN(latNum) && !Number.isNaN(lonNum)) {
+      return [latNum, lonNum];
+    }
+  }
+
+  // 1) Prøv Dataforsyningen (DK)
   try {
-    const url = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(text)}&per_side=1`;
+    const url = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(trimmed)}&per_side=1`;
     const resp = await fetch(url);
     const data = await resp.json();
-    if (!Array.isArray(data) || data.length === 0 || !data[0].adgangsadresse?.id) {
-      return null;
+    if (Array.isArray(data) && data.length > 0 && data[0].adgangsadresse?.id) {
+      const id = data[0].adgangsadresse.id;
+      const detailResp = await fetch(`https://api.dataforsyningen.dk/adgangsadresser/${id}`);
+      const detail = await detailResp.json();
+      const coords = detail.adgangspunkt?.koordinater;
+      if (coords && coords.length >= 2) {
+        const lon = coords[0];
+        const lat = coords[1];
+        return [lat, lon];
+      }
     }
-    const id = data[0].adgangsadresse.id;
-    const detailResp = await fetch(`https://api.dataforsyningen.dk/adgangsadresser/${id}`);
-    const detail = await detailResp.json();
-    const coords = detail.adgangspunkt?.koordinater;
-    if (!coords || coords.length < 2) return null;
-    const lon = coords[0];
-    const lat = coords[1];
-    return [lat, lon];
   } catch (err) {
-    console.error("Fejl i resolveRouteCoord:", err);
-    return null;
+    console.error("Fejl i resolveRouteCoord (Dataforsyningen):", err);
   }
+
+  // 2) Fald tilbage til ORS-geocoding (globalt)
+  try {
+    const features = await orsGeocodeSearch(trimmed, 1);
+    if (features.length > 0 && features[0].geometry && Array.isArray(features[0].geometry.coordinates)) {
+      const [lon, lat] = features[0].geometry.coordinates;
+      if (lat != null && lon != null) {
+        return [lat, lon];
+      }
+    }
+  } catch (err) {
+    console.error("Fejl i resolveRouteCoord (ORS fallback):", err);
+  }
+
+  return null;
 }
 
 /**
  * Planlæg rute ud fra rute-felterne (Fra / Til / Via)
  * Bruger OpenRouteService og tegner ruten på routeLayer.
+ * Nu med fallback til ORS-geocoding, så udenlandske adresser virker.
  */
 async function planRouteORS() {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
@@ -274,6 +399,8 @@ function getSortPriority(item, query) {
     text = item.navn || "";
   } else if (item.type === "custom") {
     text = item.navn || "";
+  } else if (item.type === "globaladresse") {
+    text = item.label || item.tekst || "";
   }
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
@@ -652,7 +779,7 @@ map.on("overlayadd", function(event) {
 });
 
 /***************************************************
- * Klik på kort => reverse geocoding
+ * Klik på kort => reverse geocoding (DK: Dataforsyningen, udland: ORS)
  ***************************************************/
 map.on('click', function(e) {
   let lat = e.latlng.lat;
@@ -660,20 +787,35 @@ map.on('click', function(e) {
 
   // Brug fælles helper, så den respekterer "Behold markører"
   createSelectionMarker(lat, lon);
-
   setCoordinateBox(lat, lon);
-  let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
-  fetch(revUrl)
-    .then(r => r.json())
-    .then(data => {
-      updateInfoBox(data, lat, lon);
-      fillRouteFieldsFromClick(data, lat, lon);
-    })
-    .catch(err => console.error("Reverse geocoding fejl:", err));
+
+  if (isInDenmark(lat, lon)) {
+    let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+    fetch(revUrl)
+      .then(r => r.json())
+      .then(data => {
+        updateInfoBox(data, lat, lon);
+        fillRouteFieldsFromClick(data, lat, lon);
+      })
+      .catch(err => console.error("Reverse geocoding fejl (DK):", err));
+  } else {
+    reverseGeocodeORS(lat, lon)
+      .then(feature => {
+        if (feature) {
+          updateInfoBoxForeign(feature, lat, lon);
+          fillRouteFieldsFromClick(feature, lat, lon);
+        } else {
+          // Hvis selv ORS ikke finder noget, viser vi bare koordinater
+          const fakeFeature = { properties: { label: `Koordinater: ${lat.toFixed(5)}, ${lon.toFixed(5)}` } };
+          updateInfoBoxForeign(fakeFeature, lat, lon);
+        }
+      })
+      .catch(err => console.error("Reverse geocoding fejl (ORS):", err));
+  }
 });
 
 /***************************************************
- * updateInfoBox
+ * updateInfoBox – DK-adresser
  ***************************************************/
 async function updateInfoBox(data, lat, lon) {
   const streetviewLink = document.getElementById("streetviewLink");
@@ -744,11 +886,20 @@ async function updateInfoBox(data, lat, lon) {
   overlay.textContent = `Kommunekode: ${kommunekode} | Vejkode: ${vejkode}`;
   overlay.style.display = "block";
 
-  if (resultsList) resultsList.innerHTML = "";
-  if (vej1List)    vej1List.innerHTML    = "";
-  if (vej2List)    vej2List.innerHTML    = "";
+  if (resultsList) {
+    resultsList.innerHTML = "";
+    resultsList.style.display = "none";
+  }
+  if (vej1List) {
+    vej1List.innerHTML = "";
+    vej1List.style.display = "none";
+  }
+  if (vej2List) {
+    vej2List.innerHTML = "";
+    vej2List.style.display = "none";
+  }
 
-  // Statsvej-data
+  // Statsvej-data (kun DK)
   let statsvejData = await checkForStatsvej(lat, lon);
   const statsvejInfoEl = document.getElementById("statsvejInfo");
 
@@ -830,6 +981,67 @@ async function updateInfoBox(data, lat, lon) {
     const polititekst = politikredsKode ? `${politikredsNavn || ""} (${politikredsKode})` : `${politikredsNavn}`;
     extraInfoEl.innerHTML += `<br><span style="font-size:16px;">Politikreds: ${polititekst}</span>`;
   }
+}
+
+/***************************************************
+ * updateInfoBoxForeign – udenlandske adresser (ORS)
+ ***************************************************/
+function updateInfoBoxForeign(featureOrObj, lat, lon) {
+  const streetviewLink = document.getElementById("streetviewLink");
+  const addressEl      = document.getElementById("address");
+  const extraInfoEl    = document.getElementById("extra-info");
+  const skråfotoLink   = document.getElementById("skraafotoLink");
+  const overlay        = document.getElementById("kommuneOverlay");
+  const statsBox       = document.getElementById("statsvejInfoBox");
+  const statsInfoEl    = document.getElementById("statsvejInfo");
+
+  const feature = featureOrObj.feature || featureOrObj;
+  const props   = feature.properties || {};
+  const label   = feature.label || props.label || formatORSAddress(props);
+
+  streetviewLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}`;
+  addressEl.textContent = label;
+
+  // Vi bruger bare label til kopiering i Eva/Notes
+  const evaFormat   = label;
+  const notesFormat = label;
+
+  extraInfoEl.innerHTML = "";
+  extraInfoEl.insertAdjacentHTML(
+    "beforeend",
+    `
+    <a href="#" title="Kopier adresse" onclick="(function(el){ el.style.color='red'; copyToClipboard('${evaFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Kopiér adresse</a>
+    &nbsp;
+    <a href="#" title="Kopier til Notes" onclick="(function(el){ el.style.color='red'; copyToClipboard('${notesFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Notes</a>`
+  );
+
+  // Ingen skråfoto i udlandet
+  skråfotoLink.style.display = "none";
+  skråfotoLink.href = "#";
+  skråfotoLink.onclick = null;
+
+  // Ingen kommune/vejkode i udlandet
+  overlay.textContent = "";
+  overlay.style.display = "none";
+
+  // Ingen statsvej-info i udlandet
+  if (statsInfoEl) statsInfoEl.innerHTML = "";
+  if (statsBox) statsBox.style.display = "none";
+
+  if (resultsList) {
+    resultsList.innerHTML = "";
+    resultsList.style.display = "none";
+  }
+  if (vej1List) {
+    vej1List.innerHTML = "";
+    vej1List.style.display = "none";
+  }
+  if (vej2List) {
+    vej2List.innerHTML = "";
+    vej2List.style.display = "none";
+  }
+
+  document.getElementById("infoBox").style.display = "block";
 }
 
 /***************************************************
@@ -918,18 +1130,28 @@ if (routeToggleBtn && routePanel) {
 
 /***************************************************
  * Hjælper: udfyld rute-felter ved klik på kort
+ * Understøtter både Dataforsyningen-objekter og ORS-features
  ***************************************************/
-function fillRouteFieldsFromClick(data, lat, lon) {
+function fillRouteFieldsFromClick(dataOrFeature, lat, lon) {
   if (!routePanel || routePanel.classList.contains("hidden")) return;
 
-  const vejnavn = data?.adgangsadresse?.vejnavn || data.vejnavn || "";
-  const husnr   = data?.adgangsadresse?.husnr   || data.husnr   || "";
-  const postnr  = data?.adgangsadresse?.postnr  || data.postnr  || "";
-  const postnavn = data?.adgangsadresse?.postnrnavn || data.postnrnavn || "";
+  let addrText = "";
 
-  if (!vejnavn && !postnr && !postnavn) return;
+  // DK-data (Dataforsyningen)
+  if (dataOrFeature && (dataOrFeature.adgangsadresse || dataOrFeature.vejnavn || dataOrFeature.postnr || dataOrFeature.postnrnavn)) {
+    const vejnavn  = dataOrFeature?.adgangsadresse?.vejnavn || dataOrFeature.vejnavn || "";
+    const husnr    = dataOrFeature?.adgangsadresse?.husnr   || dataOrFeature.husnr   || "";
+    const postnr   = dataOrFeature?.adgangsadresse?.postnr  || dataOrFeature.postnr  || "";
+    const postnavn = dataOrFeature?.adgangsadresse?.postnrnavn || dataOrFeature.postnrnavn || "";
+    addrText = `${vejnavn} ${husnr}, ${postnr} ${postnavn}`.trim();
+  } else if (dataOrFeature && dataOrFeature.properties) {
+    // ORS-feature
+    addrText = formatORSAddress(dataOrFeature.properties);
+  } else if (typeof dataOrFeature === "string") {
+    addrText = dataOrFeature;
+  }
 
-  const addrText = `${vejnavn} ${husnr}, ${postnr} ${postnavn}`.trim();
+  if (!addrText) return;
 
   if (routeFromInput && !routeFromInput.value) {
     routeFromInput.value = addrText;
@@ -944,7 +1166,7 @@ function fillRouteFieldsFromClick(data, lat, lon) {
 }
 
 /***************************************************
- * Hoved-søg (#search) => doSearch
+ * Hoved-søg (#search) => doSearch + koordinater
  ***************************************************/
 searchInput.addEventListener("input", function() {
   // Ny søgning: skjul info-bokse, marker mv.
@@ -960,50 +1182,79 @@ searchInput.addEventListener("input", function() {
   if (txt.length < 2) {
     clearBtn.style.display = "none";
     resultsList.innerHTML = "";
+    resultsList.style.display = "none";
     document.getElementById("infoBox").style.display = "none";
+    document.getElementById("statsvejInfoBox").style.display = "none";
     searchItems = [];
     return;
   }
   clearBtn.style.display = "inline";
-  doSearch(txt, resultsList);
-  
-  const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
-  if (coordRegex.test(txt)) {
-    const match = txt.match(coordRegex);
+
+  // Hvis der er tastet koordinater "lat, lon"
+  const coordRegex = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/;
+  const match = txt.match(coordRegex);
+  if (match) {
     const latNum = parseFloat(match[1]);
     const lonNum = parseFloat(match[2]);
-    let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lonNum}&y=${latNum}&struktur=flad`;
-    fetch(revUrl)
-      .then(r => r.json())
-      .then(data => {
-        resultsList.innerHTML = "";
-        placeMarkerAndZoom([latNum, lonNum], `Koordinater: ${latNum.toFixed(5)}, ${lonNum.toFixed(5)}`);
-        setCoordinateBox(latNum, lonNum);
-        updateInfoBox(data, latNum, lonNum);
-      })
-      .catch(err => console.error("Reverse geocoding fejl:", err));
+
+    resultsList.innerHTML = "";
+    resultsList.style.display = "none";
+
+    placeMarkerAndZoom([latNum, lonNum], `Koordinater: ${latNum.toFixed(5)}, ${lonNum.toFixed(5)}`);
+    setCoordinateBox(latNum, lonNum);
+
+    if (isInDenmark(latNum, lonNum)) {
+      let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lonNum}&y=${latNum}&struktur=flad`;
+      fetch(revUrl)
+        .then(r => r.json())
+        .then(data => {
+          updateInfoBox(data, latNum, lonNum);
+          fillRouteFieldsFromClick(data, latNum, lonNum);
+        })
+        .catch(err => console.error("Reverse geocoding fejl (DK koordinater):", err));
+    } else {
+      reverseGeocodeORS(latNum, lonNum)
+        .then(feature => {
+          if (feature) {
+            updateInfoBoxForeign(feature, latNum, lonNum);
+            fillRouteFieldsFromClick(feature, latNum, lonNum);
+          } else {
+            const fakeFeature = { properties: { label: `Koordinater: ${latNum.toFixed(5)}, ${lonNum.toFixed(5)}` } };
+            updateInfoBoxForeign(fakeFeature, latNum, lonNum);
+          }
+        })
+        .catch(err => console.error("Reverse geocoding fejl (ORS koordinater):", err));
+    }
     return;
   }
+
+  // Almindelig tekst-søgning
+  doSearch(txt, resultsList);
 });
 
 searchInput.addEventListener("keydown", function(e) {
-  if (searchItems.length === 0) return;
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    searchCurrentIndex = (searchCurrentIndex + 1) % searchItems.length;
-    highlightSearchItem();
-  } else if (e.key === "ArrowUp") {
-    e.preventDefault();
-    searchCurrentIndex = (searchCurrentIndex + searchItems.length - 1) % searchItems.length;
-    highlightSearchItem();
-  } else if (e.key === "Enter") {
-    e.preventDefault();
-    if (searchCurrentIndex >= 0) {
-      searchItems[searchCurrentIndex].click();
+  if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+    if (searchItems.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      searchCurrentIndex = (searchCurrentIndex + 1) % searchItems.length;
+      highlightSearchItem();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      searchCurrentIndex = (searchCurrentIndex + searchItems.length - 1) % searchItems.length;
+      highlightSearchItem();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchCurrentIndex >= 0) {
+        searchItems[searchCurrentIndex].click();
+      }
     }
   } else if (e.key === "Backspace") {
     if (searchInput.value.length === 0) {
       resetCoordinateBox();
+      resultsList.innerHTML = "";
+      resultsList.style.display = "none";
     }
   }
 });
@@ -1028,6 +1279,7 @@ clearBtn.addEventListener("click", function() {
     currentMarker = null;
   }
   resultsList.innerHTML = "";
+  resultsList.style.display = "none";
   document.getElementById("kommuneOverlay").style.display = "none";
 });
 
@@ -1415,7 +1667,7 @@ function doSearchStrandposter(query) {
 }
 
 /***************************************************
- * doSearch => kombinerer adresser, stednavne, specialsteder og strandposter
+ * doSearch => kombinerer adresser, stednavne, specialsteder, strandposter og ORS-udenland
  ***************************************************/
 function doSearch(query, listElement) {
   let addrUrl = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}`;
@@ -1425,6 +1677,17 @@ function doSearch(query, listElement) {
   let strandPromise = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
     : Promise.resolve([]);
+
+  // ORS-global geocoding (udenlandske adresser med 🌍)
+  let orsPromise;
+  if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
+    orsPromise = Promise.resolve([]);
+  } else {
+    orsPromise = orsGeocodeSearch(query, 10).catch(err => {
+      console.error("ORS geocoding fejl i doSearch:", err);
+      return [];
+    });
+  }
   
   let customResults = customPlaces
     .filter(p => p.navn.toLowerCase().includes(query.toLowerCase()))
@@ -1438,17 +1701,20 @@ function doSearch(query, listElement) {
     fetch(addrUrl).then(r => r.json()).catch(err => { console.error("Adresser fejl:", err); return []; }),
     fetch(stedUrl).then(r => r.json()).catch(err => { console.error("Stednavne fejl:", err); return {}; }),
     fetch(roadUrl).then(r => r.json()).catch(err => { console.error("Navngivne veje fejl:", err); return []; }),
-    strandPromise
+    strandPromise,
+    orsPromise
   ])
-  .then(([addrData, stedData, roadData, strandData]) => {
+  .then(([addrData, stedData, roadData, strandData, orsData]) => {
     listElement.innerHTML = "";
     searchItems = [];
     searchCurrentIndex = -1;
+
     let addrResults = (addrData || []).map(item => ({
       type: "adresse",
       tekst: item.tekst,
       adgangsadresse: item.adgangsadresse
     }));
+
     let stedResults = [];
     if (stedData) {
       if (Array.isArray(stedData.results)) {
@@ -1467,6 +1733,7 @@ function doSearch(query, listElement) {
         }));
       }
     }
+
     let roadResults = (roadData || []).map(item => ({
       type: "navngivenvej",
       navn: item.navn || item.adresseringsnavn || "",
@@ -1474,7 +1741,28 @@ function doSearch(query, listElement) {
       visualCenter: item.visueltcenter,
       bbox: item.bbox
     }));
-    let combined = [...addrResults, ...stedResults, ...roadResults, ...strandData, ...customResults];
+
+    // ORS-resultater => globaladresse
+    let orsResults = [];
+    if (Array.isArray(orsData)) {
+      orsResults = orsData
+        .map(f => {
+          if (!f.geometry || !Array.isArray(f.geometry.coordinates)) return null;
+          const [lon, lat] = f.geometry.coordinates;
+          if (lat == null || lon == null) return null;
+          return {
+            type: "globaladresse",
+            label: formatORSAddress(f.properties || {}),
+            lat: lat,
+            lon: lon,
+            properties: f.properties || {}
+          };
+        })
+        .filter(Boolean);
+    }
+
+    let combined = [...addrResults, ...stedResults, ...roadResults, ...strandData, ...customResults, ...orsResults];
+
     combined.sort((a, b) => {
       const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom");
       const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom");
@@ -1482,6 +1770,7 @@ function doSearch(query, listElement) {
       if (!aIsName && bIsName) return 1;
       return getSortPriority(a, query) - getSortPriority(b, query);
     });
+
     combined.forEach(obj => {
       let li = document.createElement("li");
       if (obj.type === "strandpost") {
@@ -1490,9 +1779,12 @@ function doSearch(query, listElement) {
         li.innerHTML = `🏠 ${obj.tekst}`;
       } else if (obj.type === "navngivenvej") {
         li.innerHTML = `🛣️ ${obj.navn}`;
+      } else if (obj.type === "globaladresse") {
+        li.innerHTML = `🌍 ${obj.label}`;
       } else if (obj.type === "stednavn" || obj.type === "custom") {
         li.innerHTML = `📍 ${obj.navn}`;
       }
+
       li.addEventListener("click", function() {
         if (obj.type === "adresse" && obj.adgangsadresse && obj.adgangsadresse.id) {
           fetch(`https://api.dataforsyningen.dk/adgangsadresser/${obj.adgangsadresse.id}`)
@@ -1510,8 +1802,11 @@ function doSearch(query, listElement) {
                 .catch(err => console.error("Reverse geocoding fejl:", err));
               updateInfoBox(addressData, lat, lon);
               resultsList.innerHTML = "";
+              resultsList.style.display = "none";
               vej1List.innerHTML = "";
+              vej1List.style.display = "none";
               vej2List.innerHTML = "";
+              vej2List.style.display = "none";
             })
             .catch(err => console.error("Fejl i /adgangsadresser/{id}:", err));
         } else if (obj.type === "stednavn" && obj.bbox && obj.bbox.coordinates && obj.bbox.coordinates[0] && obj.bbox.coordinates[0].length > 0) {
@@ -1557,6 +1852,7 @@ function doSearch(query, listElement) {
                 document.getElementById("statsvejInfoBox").style.display = "none";
                 resetCoordinateBox();
                 resultsList.innerHTML = "";
+                resultsList.style.display = "none";
               });
             })
             .catch(err => {
@@ -1599,8 +1895,17 @@ function doSearch(query, listElement) {
             .catch(err => console.error("Reverse geocoding fejl for navngiven vej:", err));
           listElement.innerHTML = "";
           listElement.style.display = "none";
+        } else if (obj.type === "globaladresse") {
+          // Udenlandsk adresse fra ORS
+          setCoordinateBox(obj.lat, obj.lon);
+          placeMarkerAndZoom([obj.lat, obj.lon], obj.label);
+          updateInfoBoxForeign(obj, obj.lat, obj.lon);
+          fillRouteFieldsFromClick(obj, obj.lat, obj.lon);
+          listElement.innerHTML = "";
+          listElement.style.display = "none";
         }
       });
+
       listElement.appendChild(li);
       searchItems.push(li);
     });
@@ -1766,6 +2071,9 @@ statsvejCloseBtn.addEventListener("click", function() {
     map.removeLayer(currentMarker);
     currentMarker = null;
   }
+  resultsList.innerHTML = "";
+  resultsList.style.display = "none";
+  document.getElementById("kommuneOverlay").style.display = "none";
 });
 const infoCloseBtn = document.getElementById("infoCloseBtn");
 infoCloseBtn.addEventListener("click", function() {
@@ -1777,6 +2085,7 @@ infoCloseBtn.addEventListener("click", function() {
   }
   resetCoordinateBox();
   resultsList.innerHTML = "";
+  resultsList.style.display = "none";
   document.getElementById("kommuneOverlay").style.display = "none";
 });
 
