@@ -82,13 +82,13 @@ function updateORSQuotaIndicator(remaining, limit) {
 /**
  * Hjælper: kald ORS Directions API som GeoJSON
  * coordinates: array af [lon, lat]
- * profile: f.eks. "driving-car", "cycling-regular" osv.
- * preference: "fastest" | "shortest" | "recommended"
+ * profile: fx "driving-car", "cycling-regular"
+ * preference: fx "fastest", "shortest", "recommended"
  * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
  */
 async function requestORSRoute(coordsArray, profile, preference) {
-  const profileSlug = profile || "driving-car";
-  const url = `https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profileSlug)}/geojson`;
+  const profileSafe = profile || "driving-car";
+  const url = `https://api.openrouteservice.org/v2/directions/${profileSafe}/geojson`;
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -96,11 +96,11 @@ async function requestORSRoute(coordsArray, profile, preference) {
     "Content-Type": "application/json; charset=utf-8"
   };
 
-  const payload = { coordinates: coordsArray };
+  const bodyObj = { coordinates: coordsArray };
   if (preference) {
-    payload.preference = preference;
+    bodyObj.preference = preference;
   }
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify(bodyObj);
 
   const resp = await fetch(url, {
     method: "POST",
@@ -247,10 +247,28 @@ async function reverseGeocodeORS(lat, lon) {
   }
 }
 
+// GeoJSON med kommunegrænser (bruges til præcis DK-tjek)
+let kommuneGeoJSON = null;
+
 /**
- * Hjælper: er koordinat i DK (ca. bounding box)
+ * Hjælper: er koordinat i DK (præcis – via kommunegrænser)
  */
 function isInDenmark(lat, lon) {
+  if (kommuneGeoJSON && Array.isArray(kommuneGeoJSON.features)) {
+    const pt = turf.point([lon, lat]);
+    for (const feature of kommuneGeoJSON.features) {
+      try {
+        if (turf.booleanPointInPolygon(pt, feature)) {
+          return true;
+        }
+      } catch (e) {
+        console.warn("Fejl i booleanPointInPolygon:", e);
+      }
+    }
+    return false;
+  }
+
+  // Fallback: ca. bounding box, hvis kommuneGeoJSON ikke er indlæst endnu
   return lat >= 54.3 && lat <= 58.0 && lon >= 7.5 && lon <= 15.5;
 }
 
@@ -297,6 +315,7 @@ async function resolveRouteCoord(text, cachedCoord) {
 /**
  * Planlæg rute ud fra rute-felterne (Fra / Til / Via)
  * Bruger OpenRouteService og tegner ruten på routeLayer.
+ * Respekterer valgte profil og præference.
  */
 async function planRouteORS() {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) {
@@ -326,19 +345,25 @@ async function planRouteORS() {
       return;
     }
 
-    // Profil + præference fra UI
-    const profileSelect     = document.getElementById("routeProfile");
-    const preferenceSelect  = document.getElementById("routePreference");
-    const profileValue      = profileSelect ? (profileSelect.value || "driving-car") : "driving-car";
-    const preferenceValue   = preferenceSelect ? (preferenceSelect.value || undefined) : undefined;
-
     // Koordinater i ORS-format [lon, lat]
     const coordsArray = [];
     coordsArray.push([fromCoord[1], fromCoord[0]]);
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const routeInfo = await requestORSRoute(coordsArray, profileValue, preferenceValue);
+    // Læs profil og præference fra dropdowns
+    let profile = "driving-car";
+    let preference = "recommended";
+    const profileSelect = document.getElementById("routeProfile");
+    const preferenceSelect = document.getElementById("routePreference");
+    if (profileSelect && profileSelect.value) {
+      profile = profileSelect.value;
+    }
+    if (preferenceSelect && preferenceSelect.value) {
+      preference = preferenceSelect.value;
+    }
+
+    const routeInfo = await requestORSRoute(coordsArray, profile, preference);
 
     // Tegn ruten
     routeLayer.clearLayers();
@@ -393,7 +418,8 @@ var customPlaces = [
  * Hjælpefunktion til at kopiere tekst til clipboard
  ***************************************************/
 function copyToClipboard(str) {
-  let finalStr = str.replace(/\\n/g, "\n");
+  let finalStr = str.replace(/\n/g, "
+");
   navigator.clipboard.writeText(finalStr)
     .then(() => {
       console.log("Copied to clipboard:", finalStr);
@@ -558,6 +584,7 @@ var kommunegrænserLayer = L.geoJSON(null, {
 fetch("https://api.dataforsyningen.dk/kommuner?format=geojson")
   .then(response => response.json())
   .then(data => {
+    kommuneGeoJSON = data;            // gem til isInDenmark
     kommunegrænserLayer.addData(data);
     console.log("Kommunegrænser hentet:", data);
   })
@@ -872,10 +899,10 @@ async function updateInfoBox(data, lat, lon) {
   const extraInfoEl    = document.getElementById("extra-info");
   const skråfotoLink   = document.getElementById("skraafotoLink");
   const overlay        = document.getElementById("kommuneOverlay");
-  
+
   let adresseStr, vejkode, kommunekode;
   let evaFormat, notesFormat;
-  
+
   if (data.adgangsadresse) {
     adresseStr = data.adgangsadresse.adressebetegnelse || 
                  `${data.adgangsadresse.vejnavn || ""} ${data.adgangsadresse.husnr || ""}, ${data.adgangsadresse.postnr || ""} ${data.adgangsadresse.postnrnavn || ""}`;
@@ -896,7 +923,7 @@ async function updateInfoBox(data, lat, lon) {
     vejkode     = data.vejkode     || "?";
     kommunekode = data.kommunekode || "?";
   }
-  
+
   streetviewLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}`;
   addressEl.textContent = adresseStr;
 
@@ -908,7 +935,7 @@ async function updateInfoBox(data, lat, lon) {
     &nbsp;
     <a href="#" title="Kopier til Notes" onclick="(function(el){ el.style.color='red'; copyToClipboard('${notesFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Notes</a>`
   );
-  
+
   skråfotoLink.href = `https://skraafoto.dataforsyningen.dk/?search=${encodeURIComponent(adresseStr)}`;
   skråfotoLink.style.display = "inline";
   skråfotoLink.onclick = function(e) {
@@ -951,7 +978,7 @@ async function updateInfoBox(data, lat, lon) {
   const beskrivelse = statsvejData?.BESKRIVELSE  ?? statsvejData?.beskrivelse  ?? null;
   const vejstatus   = statsvejData?.VEJSTATUS    ?? statsvejData?.vejstatus    ?? statsvejData?.VEJ_STATUS ?? statsvejData?.status ?? null;
   const vejmynd     = statsvejData?.VEJMYNDIGHED ?? statsvejData?.vejmyndighed ?? statsvejData?.VEJMYND     ?? statsvejData?.vejmynd ?? null;
-  
+
   const hasStatsvej = admNr != null || forgrening != null || (betegnelse && String(betegnelse).trim() !== "") || (vejtype && String(vejtype).trim() !== "");
   const showStatsBox = hasStatsvej || vejstatus || vejmynd;
 
@@ -985,7 +1012,7 @@ async function updateInfoBox(data, lat, lon) {
     document.getElementById("statsvejInfoBox").style.display = "none";
   }
   document.getElementById("infoBox").style.display = "block";
-  
+
   // Kommuneinfo
   if (kommunekode !== "?") {
     try {
@@ -1010,7 +1037,7 @@ async function updateInfoBox(data, lat, lon) {
       console.error("Kunne ikke hente kommuneinfo:", e);
     }
   }
-  
+
   const politikredsNavn = data.politikredsnavn
     ?? data.adgangsadresse?.politikredsnavn
     ?? null;
@@ -1205,7 +1232,7 @@ searchInput.addEventListener("input", function() {
   }
   clearBtn.style.display = "inline";
   doSearch(txt, resultsList);
-  
+
   const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
   if (coordRegex.test(txt)) {
     const match = txt.match(coordRegex);
@@ -1455,11 +1482,6 @@ function selectRouteSuggestion(item, type, listElement) {
       } else {
         routeViaCoord = [lat, lon];
       }
-
-      // Hvis både Fra og Til er sat, så beregn rute automatisk
-      if (routeFromCoord && routeToCoord) {
-        planRouteORS();
-      }
     })
     .catch(err => console.error("Fejl i selectRouteSuggestion:", err));
 }
@@ -1557,17 +1579,6 @@ function setupRouteInputHandlers(inputElement, listElement, type) {
 setupRouteInputHandlers(routeFromInput, routeFromList, "from");
 setupRouteInputHandlers(routeToInput,   routeToList,   "to");
 setupRouteInputHandlers(routeViaInput,  routeViaList,  "via");
-
-/***************************************************
- * Automatisk recalculation helper
- ***************************************************/
-function autoRecalculateRoute() {
-  const fromText = routeFromInput ? routeFromInput.value.trim() : "";
-  const toText   = routeToInput   ? routeToInput.value.trim()   : "";
-  if (!fromText || !toText) return;
-  // Kald bare planRouteORS – den håndterer fejl og tæller
-  planRouteORS();
-}
 
 /***************************************************
  * Globale variabler til at gemme valgte veje (Find X)
@@ -2013,7 +2024,8 @@ Y=50`;
 }
 
 function parseTextResponse(text) {
-  let lines = text.split("\n");
+  let lines = text.split("
+");
   let data = {};
   lines.forEach(line => {
     let parts = line.split(" = ");
@@ -2212,14 +2224,12 @@ document.getElementById("btn100").addEventListener("click", function() {
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
-
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
     });
   }
-
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -2259,13 +2269,25 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Automatisk rute-opdatering når profil eller præference ændres
-  const profileSelect    = document.getElementById("routeProfile");
-  const preferenceSelect = document.getElementById("routePreference");
+  // Auto-opdater rute når profil/præference ændres,
+  // hvis der allerede er udfyldt Fra og Til
+  const profileSelect = document.getElementById("routeProfile");
   if (profileSelect) {
-    profileSelect.addEventListener("change", autoRecalculateRoute);
+    profileSelect.addEventListener("change", function() {
+      if (routeFromInput && routeToInput &&
+          routeFromInput.value.trim() && routeToInput.value.trim()) {
+        planRouteORS();
+      }
+    });
   }
+
+  const preferenceSelect = document.getElementById("routePreference");
   if (preferenceSelect) {
-    preferenceSelect.addEventListener("change", autoRecalculateRoute);
+    preferenceSelect.addEventListener("change", function() {
+      if (routeFromInput && routeToInput &&
+          routeFromInput.value.trim() && routeToInput.value.trim()) {
+        planRouteORS();
+      }
+    });
   }
 });
