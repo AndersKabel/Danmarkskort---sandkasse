@@ -80,12 +80,15 @@ function updateORSQuotaIndicator(remaining, limit) {
 }
 
 /**
- * Hjælper: kald ORS Directions API (driving-car) som GeoJSON
+ * Hjælper: kald ORS Directions API som GeoJSON
  * coordinates: array af [lon, lat]
+ * profile: f.eks. "driving-car", "cycling-regular" osv.
+ * preference: "fastest" | "shortest" | "recommended"
  * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
  */
-async function requestORSRoute(coordsArray) {
-  const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
+async function requestORSRoute(coordsArray, profile, preference) {
+  const profileSlug = profile || "driving-car";
+  const url = `https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profileSlug)}/geojson`;
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -93,7 +96,11 @@ async function requestORSRoute(coordsArray) {
     "Content-Type": "application/json; charset=utf-8"
   };
 
-  const body = JSON.stringify({ coordinates: coordsArray });
+  const payload = { coordinates: coordsArray };
+  if (preference) {
+    payload.preference = preference;
+  }
+  const body = JSON.stringify(payload);
 
   const resp = await fetch(url, {
     method: "POST",
@@ -319,13 +326,19 @@ async function planRouteORS() {
       return;
     }
 
+    // Profil + præference fra UI
+    const profileSelect     = document.getElementById("routeProfile");
+    const preferenceSelect  = document.getElementById("routePreference");
+    const profileValue      = profileSelect ? (profileSelect.value || "driving-car") : "driving-car";
+    const preferenceValue   = preferenceSelect ? (preferenceSelect.value || undefined) : undefined;
+
     // Koordinater i ORS-format [lon, lat]
     const coordsArray = [];
     coordsArray.push([fromCoord[1], fromCoord[0]]);
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const routeInfo = await requestORSRoute(coordsArray);
+    const routeInfo = await requestORSRoute(coordsArray, profileValue, preferenceValue);
 
     // Tegn ruten
     routeLayer.clearLayers();
@@ -1442,6 +1455,11 @@ function selectRouteSuggestion(item, type, listElement) {
       } else {
         routeViaCoord = [lat, lon];
       }
+
+      // Hvis både Fra og Til er sat, så beregn rute automatisk
+      if (routeFromCoord && routeToCoord) {
+        planRouteORS();
+      }
     })
     .catch(err => console.error("Fejl i selectRouteSuggestion:", err));
 }
@@ -1539,6 +1557,17 @@ function setupRouteInputHandlers(inputElement, listElement, type) {
 setupRouteInputHandlers(routeFromInput, routeFromList, "from");
 setupRouteInputHandlers(routeToInput,   routeToList,   "to");
 setupRouteInputHandlers(routeViaInput,  routeViaList,  "via");
+
+/***************************************************
+ * Automatisk recalculation helper
+ ***************************************************/
+function autoRecalculateRoute() {
+  const fromText = routeFromInput ? routeFromInput.value.trim() : "";
+  const toText   = routeToInput   ? routeToInput.value.trim()   : "";
+  if (!fromText || !toText) return;
+  // Kald bare planRouteORS – den håndterer fejl og tæller
+  planRouteORS();
+}
 
 /***************************************************
  * Globale variabler til at gemme valgte veje (Find X)
@@ -2183,12 +2212,14 @@ document.getElementById("btn100").addEventListener("click", function() {
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
+
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
     });
   }
+
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -2226,5 +2257,15 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       resetCoordinateBox();
     });
+  }
+
+  // Automatisk rute-opdatering når profil eller præference ændres
+  const profileSelect    = document.getElementById("routeProfile");
+  const preferenceSelect = document.getElementById("routePreference");
+  if (profileSelect) {
+    profileSelect.addEventListener("change", autoRecalculateRoute);
+  }
+  if (preferenceSelect) {
+    preferenceSelect.addEventListener("change", autoRecalculateRoute);
   }
 });
