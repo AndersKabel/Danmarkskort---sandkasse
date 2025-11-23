@@ -345,7 +345,7 @@
   display: flex;
   flex-direction: row;
   gap: 6px;
-  width: 80px;          /* samme samlede bredde som den gamle Start-knap */
+  width: 130px;          /* lidt bredere, så Start/Ryd har mere plads */
 }
 
 .route-button-group .route-btn {
