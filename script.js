@@ -58,7 +58,6 @@ function updateORSQuotaIndicator(remaining, limit) {
   const baseText = btn.dataset.baseText;
 
   if (remaining == null) {
-    // Hvis vi ikke kan læse headeren, rør ikke ved teksten
     return;
   }
 
@@ -81,14 +80,14 @@ function updateORSQuotaIndicator(remaining, limit) {
 
 /**
  * Hjælper: kald ORS Directions API som GeoJSON
+ * profile: fx "driving-car", "cycling-regular"
  * coordinates: array af [lon, lat]
- * profile: f.eks. "driving-car", "cycling-regular" osv.
- * preference: "fastest" | "shortest" | "recommended"
+ * preference: fx "fastest", "shortest", "recommended"
  * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
  */
-async function requestORSRoute(coordsArray, profile, preference) {
-  const profileSlug = profile || "driving-car";
-  const url = `https://api.openrouteservice.org/v2/directions/${encodeURIComponent(profileSlug)}/geojson`;
+async function requestORSRoute(profile, coordsArray, preference) {
+  const profileSafe = profile || "driving-car";
+  const url = `https://api.openrouteservice.org/v2/directions/${profileSafe}/geojson`;
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -255,6 +254,51 @@ function isInDenmark(lat, lon) {
 }
 
 /**
+ * Maks acceptabel afstand (km) mellem klik og adresse
+ * for at vi stadig kalder det "Danmark".
+ * Er adressen længere væk end dette, falder vi tilbage til ORS (udland).
+ */
+const MAX_DK_REVERSE_DISTANCE_KM = 5;
+
+/**
+ * Haversine-afstand i km mellem to lat/lon-punkter
+ */
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // jordradius i km
+  const toRad = deg => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Hjælper: håndter klik i udlandet (ORS reverse geocoding)
+ */
+function handleForeignClick(lat, lon) {
+  reverseGeocodeORS(lat, lon)
+    .then(feature => {
+      if (!feature) return;
+
+      updateInfoBoxForeign(feature, lat, lon);
+
+      const p = feature.properties || {};
+      const norm = {
+        vejnavn: p.street || p.name || "",
+        husnr: p.housenumber || "",
+        postnr: p.postalcode || "",
+        postnrnavn: p.locality || p.region || p.country || ""
+      };
+      fillRouteFieldsFromClick(norm, lat, lon);
+    })
+    .catch(err => console.error("ORS reverse geocoding fejl:", err));
+}
+
+/**
  * Hjælper: find koordinater (lat,lon) for en adresse-tekst
  * Bruger evt. allerede gemte koordinater, ellers Dataforsyningen
  * og falder tilbage til ORS geocoding for udenlandske adresser.
@@ -326,19 +370,18 @@ async function planRouteORS() {
       return;
     }
 
-    // Profil + præference fra UI
-    const profileSelect     = document.getElementById("routeProfile");
-    const preferenceSelect  = document.getElementById("routePreference");
-    const profileValue      = profileSelect ? (profileSelect.value || "driving-car") : "driving-car";
-    const preferenceValue   = preferenceSelect ? (preferenceSelect.value || undefined) : undefined;
-
     // Koordinater i ORS-format [lon, lat]
     const coordsArray = [];
     coordsArray.push([fromCoord[1], fromCoord[0]]);
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const routeInfo = await requestORSRoute(coordsArray, profileValue, preferenceValue);
+    const profileSelect    = document.getElementById("routeProfile");
+    const preferenceSelect = document.getElementById("routePreference");
+    const profile    = profileSelect    ? profileSelect.value    : "driving-car";
+    const preference = preferenceSelect ? preferenceSelect.value : undefined;
+
+    const routeInfo = await requestORSRoute(profile, coordsArray, preference);
 
     // Tegn ruten
     routeLayer.clearLayers();
@@ -833,33 +876,50 @@ map.on('click', function(e) {
   setCoordinateBox(lat, lon);
 
   if (isInDenmark(lat, lon)) {
-    // DK: Dataforsyningen
+    // DK: Dataforsyningen (men vi tjekker efterfølgende, om adressen faktisk er tæt på)
     let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
     fetch(revUrl)
       .then(r => r.json())
       .then(data => {
-        updateInfoBox(data, lat, lon);
-        fillRouteFieldsFromClick(data, lat, lon);
+        // Forsøg at finde adressens egne koordinater
+        let addrLon = null;
+        let addrLat = null;
+        if (data?.adgangsadresse?.adgangspunkt?.koordinater) {
+          addrLon = data.adgangsadresse.adgangspunkt.koordinater[0];
+          addrLat = data.adgangsadresse.adgangspunkt.koordinater[1];
+        } else if (Array.isArray(data?.adgangspunkt?.koordinater)) {
+          addrLon = data.adgangspunkt.koordinater[0];
+          addrLat = data.adgangspunkt.koordinater[1];
+        } else if (typeof data.x === "number" && typeof data.y === "number") {
+          addrLon = data.x;
+          addrLat = data.y;
+        }
+
+        let effLat = lat;
+        let effLon = lon;
+
+        if (addrLat != null && addrLon != null) {
+          const distKm = haversineDistanceKm(lat, lon, addrLat, addrLon);
+          // Hvis nærmeste danske adresse er "for langt væk", antager vi udland
+          if (distKm > MAX_DK_REVERSE_DISTANCE_KM) {
+            handleForeignClick(lat, lon);
+            return;
+          }
+          effLat = addrLat;
+          effLon = addrLon;
+        }
+
+        updateInfoBox(data, effLat, effLon);
+        fillRouteFieldsFromClick(data, effLat, effLon);
       })
-      .catch(err => console.error("Reverse geocoding fejl:", err));
+      .catch(err => {
+        console.error("Reverse geocoding fejl:", err);
+        // Hvis DF fejler helt, prøver vi udland
+        handleForeignClick(lat, lon);
+      });
   } else {
     // Udland: ORS reverse geocoding
-    reverseGeocodeORS(lat, lon)
-      .then(feature => {
-        if (!feature) return;
-
-        updateInfoBoxForeign(feature, lat, lon);
-
-        const p = feature.properties || {};
-        const norm = {
-          vejnavn: p.street || p.name || "",
-          husnr: p.housenumber || "",
-          postnr: p.postalcode || "",
-          postnrnavn: p.locality || p.region || p.country || ""
-        };
-        fillRouteFieldsFromClick(norm, lat, lon);
-      })
-      .catch(err => console.error("ORS reverse geocoding fejl:", err));
+    handleForeignClick(lat, lon);
   }
 });
 
@@ -1455,11 +1515,6 @@ function selectRouteSuggestion(item, type, listElement) {
       } else {
         routeViaCoord = [lat, lon];
       }
-
-      // Hvis både Fra og Til er sat, så beregn rute automatisk
-      if (routeFromCoord && routeToCoord) {
-        planRouteORS();
-      }
     })
     .catch(err => console.error("Fejl i selectRouteSuggestion:", err));
 }
@@ -1557,17 +1612,6 @@ function setupRouteInputHandlers(inputElement, listElement, type) {
 setupRouteInputHandlers(routeFromInput, routeFromList, "from");
 setupRouteInputHandlers(routeToInput,   routeToList,   "to");
 setupRouteInputHandlers(routeViaInput,  routeViaList,  "via");
-
-/***************************************************
- * Automatisk recalculation helper
- ***************************************************/
-function autoRecalculateRoute() {
-  const fromText = routeFromInput ? routeFromInput.value.trim() : "";
-  const toText   = routeToInput   ? routeToInput.value.trim()   : "";
-  if (!fromText || !toText) return;
-  // Kald bare planRouteORS – den håndterer fejl og tæller
-  planRouteORS();
-}
 
 /***************************************************
  * Globale variabler til at gemme valgte veje (Find X)
@@ -2127,8 +2171,8 @@ document.getElementById("findKrydsBtn").addEventListener("click", async function
       let [wgsLon, wgsLat] = proj4("EPSG:25832", "EPSG:4326", [coords[0], coords[1]]);
       latLngs.push([wgsLat, wgsLon]);
       let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${wgsLon}&y=${wgsLat}&struktur=flad`;
-      let marker = L.marker([wgsLat, wgsLon]).addTo(map);
-      try {
+      let marker = L.marker([wgsLat]()
+try {
         let resp = await fetch(revUrl);
         let revData = await resp.json();
         let addressStr = `${revData.vejnavn || "Ukendt"} ${revData.husnr || ""}, ${revData.postnr || "?"} ${revData.postnrnavn || ""}`;
