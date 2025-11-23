@@ -45,15 +45,15 @@ function getRepresentativeCoordinate(geometry) {
 }
 
 /**
- * Hjælper: opdater "Rute"-knappen med ORS-remaining
+ * Hjælper: opdater "Start"-knappen med ORS-remaining
  */
 function updateORSQuotaIndicator(remaining, limit) {
-  const btn = document.getElementById("routeToggleBtn");
+  const btn = document.getElementById("planRouteBtn");
   if (!btn) return;
 
   // Gem original tekst første gang
   if (!btn.dataset.baseText) {
-    btn.dataset.baseText = btn.textContent.trim() || "Rute";
+    btn.dataset.baseText = btn.textContent.trim() || "Start";
   }
   const baseText = btn.dataset.baseText;
 
@@ -101,7 +101,7 @@ async function requestORSRoute(coordsArray) {
     body: body
   });
 
-  // Forsøg at læse rate-limit headers til tæller på "Rute"
+  // Forsøg at læse rate-limit headers til tæller på "Start"
   try {
     const remaining = resp.headers.get("x-ratelimit-remaining");
     const limit = resp.headers.get("x-ratelimit-limit");
