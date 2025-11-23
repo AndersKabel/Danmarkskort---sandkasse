@@ -45,19 +45,20 @@ function getRepresentativeCoordinate(geometry) {
 }
 
 /**
- * Hjælper: opdater "Start"-knappen med ORS-remaining
+ * Hjælper: opdater "Rute"-knappen med ORS-remaining
  */
 function updateORSQuotaIndicator(remaining, limit) {
-  const btn = document.getElementById("planRouteBtn");
+  const btn = document.getElementById("routeToggleBtn");
   if (!btn) return;
 
   // Gem original tekst første gang
   if (!btn.dataset.baseText) {
-    btn.dataset.baseText = btn.textContent.trim() || "Start";
+    btn.dataset.baseText = btn.textContent.trim() || "Rute";
   }
   const baseText = btn.dataset.baseText;
 
   if (remaining == null) {
+    // Hvis vi ikke kan læse headeren, rør ikke ved teksten
     return;
   }
 
@@ -79,15 +80,12 @@ function updateORSQuotaIndicator(remaining, limit) {
 }
 
 /**
- * Hjælper: kald ORS Directions API som GeoJSON
- * profile: fx "driving-car", "cycling-regular"
+ * Hjælper: kald ORS Directions API (driving-car) som GeoJSON
  * coordinates: array af [lon, lat]
- * preference: fx "fastest", "shortest", "recommended"
  * Returnerer { coords: [ [lon,lat], ... ], distance, duration }
  */
-async function requestORSRoute(profile, coordsArray, preference) {
-  const profileSafe = profile || "driving-car";
-  const url = `https://api.openrouteservice.org/v2/directions/${profileSafe}/geojson`;
+async function requestORSRoute(coordsArray) {
+  const url = "https://api.openrouteservice.org/v2/directions/driving-car/geojson";
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
@@ -95,11 +93,7 @@ async function requestORSRoute(profile, coordsArray, preference) {
     "Content-Type": "application/json; charset=utf-8"
   };
 
-  const payload = { coordinates: coordsArray };
-  if (preference) {
-    payload.preference = preference;
-  }
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify({ coordinates: coordsArray });
 
   const resp = await fetch(url, {
     method: "POST",
@@ -107,7 +101,7 @@ async function requestORSRoute(profile, coordsArray, preference) {
     body: body
   });
 
-  // Forsøg at læse rate-limit headers til tæller på "Start"
+  // Forsøg at læse rate-limit headers til tæller på "Rute"
   try {
     const remaining = resp.headers.get("x-ratelimit-remaining");
     const limit = resp.headers.get("x-ratelimit-limit");
@@ -254,51 +248,6 @@ function isInDenmark(lat, lon) {
 }
 
 /**
- * Maks acceptabel afstand (km) mellem klik og adresse
- * for at vi stadig kalder det "Danmark".
- * Er adressen længere væk end dette, falder vi tilbage til ORS (udland).
- */
-const MAX_DK_REVERSE_DISTANCE_KM = 5;
-
-/**
- * Haversine-afstand i km mellem to lat/lon-punkter
- */
-function haversineDistanceKm(lat1, lon1, lat2, lon2) {
-  const R = 6371; // jordradius i km
-  const toRad = deg => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/**
- * Hjælper: håndter klik i udlandet (ORS reverse geocoding)
- */
-function handleForeignClick(lat, lon) {
-  reverseGeocodeORS(lat, lon)
-    .then(feature => {
-      if (!feature) return;
-
-      updateInfoBoxForeign(feature, lat, lon);
-
-      const p = feature.properties || {};
-      const norm = {
-        vejnavn: p.street || p.name || "",
-        husnr: p.housenumber || "",
-        postnr: p.postalcode || "",
-        postnrnavn: p.locality || p.region || p.country || ""
-      };
-      fillRouteFieldsFromClick(norm, lat, lon);
-    })
-    .catch(err => console.error("ORS reverse geocoding fejl:", err));
-}
-
-/**
  * Hjælper: find koordinater (lat,lon) for en adresse-tekst
  * Bruger evt. allerede gemte koordinater, ellers Dataforsyningen
  * og falder tilbage til ORS geocoding for udenlandske adresser.
@@ -376,12 +325,7 @@ async function planRouteORS() {
     if (viaCoord) coordsArray.push([viaCoord[1], viaCoord[0]]);
     coordsArray.push([toCoord[1], toCoord[0]]);
 
-    const profileSelect    = document.getElementById("routeProfile");
-    const preferenceSelect = document.getElementById("routePreference");
-    const profile    = profileSelect    ? profileSelect.value    : "driving-car";
-    const preference = preferenceSelect ? preferenceSelect.value : undefined;
-
-    const routeInfo = await requestORSRoute(profile, coordsArray, preference);
+    const routeInfo = await requestORSRoute(coordsArray);
 
     // Tegn ruten
     routeLayer.clearLayers();
@@ -876,50 +820,33 @@ map.on('click', function(e) {
   setCoordinateBox(lat, lon);
 
   if (isInDenmark(lat, lon)) {
-    // DK: Dataforsyningen (men vi tjekker efterfølgende, om adressen faktisk er tæt på)
+    // DK: Dataforsyningen
     let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
     fetch(revUrl)
       .then(r => r.json())
       .then(data => {
-        // Forsøg at finde adressens egne koordinater
-        let addrLon = null;
-        let addrLat = null;
-        if (data?.adgangsadresse?.adgangspunkt?.koordinater) {
-          addrLon = data.adgangsadresse.adgangspunkt.koordinater[0];
-          addrLat = data.adgangsadresse.adgangspunkt.koordinater[1];
-        } else if (Array.isArray(data?.adgangspunkt?.koordinater)) {
-          addrLon = data.adgangspunkt.koordinater[0];
-          addrLat = data.adgangspunkt.koordinater[1];
-        } else if (typeof data.x === "number" && typeof data.y === "number") {
-          addrLon = data.x;
-          addrLat = data.y;
-        }
-
-        let effLat = lat;
-        let effLon = lon;
-
-        if (addrLat != null && addrLon != null) {
-          const distKm = haversineDistanceKm(lat, lon, addrLat, addrLon);
-          // Hvis nærmeste danske adresse er "for langt væk", antager vi udland
-          if (distKm > MAX_DK_REVERSE_DISTANCE_KM) {
-            handleForeignClick(lat, lon);
-            return;
-          }
-          effLat = addrLat;
-          effLon = addrLon;
-        }
-
-        updateInfoBox(data, effLat, effLon);
-        fillRouteFieldsFromClick(data, effLat, effLon);
+        updateInfoBox(data, lat, lon);
+        fillRouteFieldsFromClick(data, lat, lon);
       })
-      .catch(err => {
-        console.error("Reverse geocoding fejl:", err);
-        // Hvis DF fejler helt, prøver vi udland
-        handleForeignClick(lat, lon);
-      });
+      .catch(err => console.error("Reverse geocoding fejl:", err));
   } else {
     // Udland: ORS reverse geocoding
-    handleForeignClick(lat, lon);
+    reverseGeocodeORS(lat, lon)
+      .then(feature => {
+        if (!feature) return;
+
+        updateInfoBoxForeign(feature, lat, lon);
+
+        const p = feature.properties || {};
+        const norm = {
+          vejnavn: p.street || p.name || "",
+          husnr: p.housenumber || "",
+          postnr: p.postalcode || "",
+          postnrnavn: p.locality || p.region || p.country || ""
+        };
+        fillRouteFieldsFromClick(norm, lat, lon);
+      })
+      .catch(err => console.error("ORS reverse geocoding fejl:", err));
   }
 });
 
@@ -2171,8 +2098,8 @@ document.getElementById("findKrydsBtn").addEventListener("click", async function
       let [wgsLon, wgsLat] = proj4("EPSG:25832", "EPSG:4326", [coords[0], coords[1]]);
       latLngs.push([wgsLat, wgsLon]);
       let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${wgsLon}&y=${wgsLat}&struktur=flad`;
-      let marker = L.marker([wgsLat]()
-try {
+      let marker = L.marker([wgsLat, wgsLon]).addTo(map);
+      try {
         let resp = await fetch(revUrl);
         let revData = await resp.json();
         let addressStr = `${revData.vejnavn || "Ukendt"} ${revData.husnr || ""}, ${revData.postnr || "?"} ${revData.postnrnavn || ""}`;
@@ -2256,14 +2183,12 @@ document.getElementById("btn100").addEventListener("click", function() {
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("search").focus();
-
   const planBtn = document.getElementById("planRouteBtn");
   if (planBtn) {
     planBtn.addEventListener("click", function() {
       planRouteORS();
     });
   }
-
   const clearRouteBtn = document.getElementById("clearRouteBtn");
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener("click", function() {
@@ -2301,15 +2226,5 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       resetCoordinateBox();
     });
-  }
-
-  // Automatisk rute-opdatering når profil eller præference ændres
-  const profileSelect    = document.getElementById("routeProfile");
-  const preferenceSelect = document.getElementById("routePreference");
-  if (profileSelect) {
-    profileSelect.addEventListener("change", autoRecalculateRoute);
-  }
-  if (preferenceSelect) {
-    preferenceSelect.addEventListener("change", autoRecalculateRoute);
   }
 });
