@@ -568,6 +568,10 @@ var dbJournalLayer = L.layerGroup();
 var border25Layer  = L.layerGroup();
 var chargeMapLayer = L.layerGroup();
 
+// Nyt lag til at holde søge-markører, når "behold markører" er aktiv
+var addressMarkersLayer = L.layerGroup();
+var keepAddressMarkers = false;
+
 var originalBorderCoords = [];
 fetch("dansk-tysk-grænse.geojson")
   .then(r => r.json())
@@ -617,7 +621,9 @@ const overlayMaps = {
   "DB Journal": dbJournalLayer,
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
-  "Rutenummereret vejnet": rutenummerLayer
+  "Rutenummereret vejnet": rutenummerLayer,
+  "Behold adresse-markører": addressMarkersLayer,
+  "Ruter (ORS)": routeLayer
 };
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
@@ -670,6 +676,17 @@ map.on('overlayadd', function(e) {
       });
     })
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
+  } else if (e.layer === addressMarkersLayer) {
+    // Når overlayet slås til, skal vi bare huske at vi skal beholde adresse-markører
+    keepAddressMarkers = true;
+  }
+});
+
+map.on('overlayremove', function(e) {
+  if (e.layer === addressMarkersLayer) {
+    // Når overlayet slås fra: stop med at beholde markører og ryd laget
+    keepAddressMarkers = false;
+    addressMarkersLayer.clearLayers();
   }
 });
 
@@ -1713,7 +1730,8 @@ function doSearch(query, listElement) {
             .then(addressData => {
               let [lon, lat] = addressData.adgangspunkt.koordinater;
               setCoordinateBox(lat, lon);
-              placeMarkerAndZoom([lat, lon], obj.tekst);
+              // Her markerer vi, at det er en dansk adresse-søgning
+              placeMarkerAndZoom([lat, lon], obj.tekst, { isAddress: true });
               let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
               fetch(revUrl)
                 .then(r => r.json())
@@ -1860,16 +1878,39 @@ async function getNavngivenvejKommunedelGeometry(husnummerId) {
 /***************************************************
  * placeMarkerAndZoom
  ***************************************************/
-function placeMarkerAndZoom(coords, displayText) {
+function placeMarkerAndZoom(coords, displayText, options) {
+  options = options || {};
+  const isAddress = !!options.isAddress;
+
   if (coords[0] > 90 || coords[1] > 90) {
     let converted = convertToWGS84(coords[0], coords[1]);
     coords = converted;
   }
   let lat = coords[0], lon = coords[1];
-  if (currentMarker) {
-    map.removeLayer(currentMarker);
+
+  let marker;
+
+  if (isAddress && keepAddressMarkers) {
+    // Behold eksisterende adresse-markører og tilføj en ny i addressMarkersLayer
+    marker = L.marker([lat, lon]);
+    if (addressMarkersLayer) {
+      marker.addTo(addressMarkersLayer);
+      // Hvis laget ikke allerede er synligt, tilføj det til kortet
+      if (!map.hasLayer(addressMarkersLayer)) {
+        map.addLayer(addressMarkersLayer);
+      }
+    } else {
+      marker.addTo(map);
+    }
+  } else {
+    // Normal opførsel: fjern tidligere marker og erstat med ny
+    if (currentMarker) {
+      map.removeLayer(currentMarker);
+    }
+    marker = L.marker([lat, lon]).addTo(map);
   }
-  currentMarker = L.marker([lat, lon]).addTo(map);
+
+  currentMarker = marker;
   map.setView([lat, lon], 16);
   document.getElementById("address").textContent = displayText;
   const streetviewLink = document.getElementById("streetviewLink");
