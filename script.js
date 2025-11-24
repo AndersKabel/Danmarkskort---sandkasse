@@ -2025,8 +2025,7 @@ Y=50`;
 }
 
 function parseTextResponse(text) {
-  let lines = text.split("
-");
+  let lines = text.split("\n");
   let data = {};
   lines.forEach(line => {
     let parts = line.split(" = ");
