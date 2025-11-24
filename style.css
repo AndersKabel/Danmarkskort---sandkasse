@@ -29,6 +29,20 @@
   width: 100%;
 }
 
+/* Lille række til "Udland"-checkboxen */
+.search-options-row {
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.udland-label {
+  font-size: 13px;
+  color: #333;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* ============================
    INPUTFELTER
 ============================ */
@@ -345,7 +359,7 @@
   display: flex;
   flex-direction: row;
   gap: 6px;
-  width: 130px;          /* lidt bredere, så Start/Ryd har mere plads */
+  width: 80px;          /* samme samlede bredde som den gamle Start-knap */
 }
 
 .route-button-group .route-btn {
