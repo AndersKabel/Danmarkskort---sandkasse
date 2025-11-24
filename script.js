@@ -418,8 +418,9 @@ var customPlaces = [
  * Hjælpefunktion til at kopiere tekst til clipboard
  ***************************************************/
 function copyToClipboard(str) {
-  let finalStr = str.replace(/\n/g, "
-");
+  // Lav evt. '\n' om til rigtige linjeskift
+  const finalStr = String(str).replace(/\\n/g, "\n");
+
   navigator.clipboard.writeText(finalStr)
     .then(() => {
       console.log("Copied to clipboard:", finalStr);
