@@ -29,20 +29,6 @@
   width: 100%;
 }
 
-/* Lille række til "Udland"-checkboxen */
-.search-options-row {
-  margin-top: 4px;
-  margin-bottom: 6px;
-}
-
-.udland-label {
-  font-size: 13px;
-  color: #333;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* ============================
    INPUTFELTER
 ============================ */
@@ -435,5 +421,28 @@
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
+  font-size: 12px;
+}
+
+/* ============================
+   Udland-checkbox under søg
+============================ */
+.search-options-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px 0;
+  font-size: 13px;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.search-hint {
+  color: #666;
   font-size: 12px;
 }
