@@ -15,7 +15,7 @@
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Turf.js til intersection -->
+  <!-- Turf.js til intersection + point-in-polygon -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
   <!-- Wellknown (WKT parser) -->
@@ -40,12 +40,15 @@
         </button>
       </div>
 
-      <!-- Udland-checkbox til søgning på udenlandske adresser -->
+      <!-- Udland-checkbox under søgefeltet -->
       <div class="search-options-row">
-        <label class="udland-label">
-          <input type="checkbox" id="foreignSearchToggle">
+        <label class="checkbox-inline">
+          <input type="checkbox" id="enableForeignSearch">
           Udland
         </label>
+        <span class="search-hint">
+          Sæt flueben for at søge på udenlandske adresser
+        </span>
       </div>
 
       <ul id="results"></ul>
@@ -80,7 +83,7 @@
           </div>
         </div>
 
-        <!-- Rute-indstillinger -->
+        <!-- Rute-indstillinger (profil + præference) -->
         <div class="route-options">
           <div class="route-options-row">
             <label>
