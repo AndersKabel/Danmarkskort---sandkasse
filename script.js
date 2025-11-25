@@ -518,9 +518,9 @@ var ortofotoLayer = L.tileLayer.wms(
  * Vejrlag (nedbør) – OpenWeatherMap tiles
  * Kræver egen API-nøgle fra https://openweathermap.org/api
  ***************************************************/
-const OWM_API_KEY = "YOUR_OPENWEATHERMAP_API_KEY_HERE"; // <-- indsæt din nøgle her
+const OWM_API_KEY = 71886b99dfc71fdd19c9825cf0b995c1; // <-- indsæt din nøgle her
 var weatherLayer = null;
-if (OWM_API_KEY && !OWM_API_KEY.includes("YOUR_OPENWEATHERMAP_API_KEY_HERE")) {
+if (OWM_API_KEY && !OWM_API_KEY.includes(71886b99dfc71fdd19c9825cf0b995c1)) {
   weatherLayer = L.tileLayer(
     `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     {
