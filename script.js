@@ -217,6 +217,18 @@ async function geocodeORSFirst(text) {
       console.error("ORS geocode fejl:", resp.status, resp.statusText);
       return null;
     }
+
+    try {
+      const remaining = resp.headers.get("x-ratelimit-remaining");
+      const limit = resp.headers.get("x-ratelimit-limit");
+      const reset = resp.headers.get("x-ratelimit-reset");
+      if (remaining != null) {
+        updateORSGeocodeIndicator(remaining, limit, reset);
+      }
+    } catch (e) {
+      console.warn("Kunne ikke læse ORS geocode rate-limit headers (geocodeORSFirst):", e);
+    }
+
     const data = await resp.json();
     if (!data.features || data.features.length === 0) return null;
     const feat = data.features[0];
