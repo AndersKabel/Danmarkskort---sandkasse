@@ -1802,6 +1802,15 @@ function doSearch(query, listElement) {
 
     let orsResults = (orsData || []).map(o => o);
 
+    // NYT: Hvis "Udland" er slået til, fjern alle danske resultater
+    if (foreignSearchToggle && foreignSearchToggle.checked) {
+      addrResults  = [];
+      stedResults  = [];
+      roadResults  = [];
+      strandData   = [];
+      customResults = [];
+    }
+
     let combined = [
       ...addrResults,
       ...stedResults,
