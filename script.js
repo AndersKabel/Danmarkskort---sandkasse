@@ -1136,7 +1136,7 @@ var vej1List     = document.getElementById("results-vej1");
 var vej2List     = document.getElementById("results-vej2");
 
 // Checkbox til at styre udenlandsk søgning
-var foreignSearchToggle = document.getElementById("foreignSearchToggle");
+var foreignSearchToggle = document.getElementById("enableForeignSearch") || document.getElementById("foreignSearchToggle") || document.getElementById("foreignSearch");
 
 // Rute-felter
 var routeFromInput = document.getElementById("routeFrom");
