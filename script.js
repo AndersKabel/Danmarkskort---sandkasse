@@ -86,6 +86,12 @@ function updateORSGeocodeQuotaIndicator(remaining, limit, reset) {
   const span = document.getElementById("orsGeocodeQuota");
   if (!span) return;
 
+  // Vis kun tælleren, når Udland-checkboxen er slået til
+  if (typeof foreignSearchToggle !== "undefined" && foreignSearchToggle && !foreignSearchToggle.checked) {
+    span.style.display = "none";
+    return;
+  }
+
   if (remaining == null) {
     // Hvis vi ikke kan læse headeren, ryd teksten
     span.textContent = "";
@@ -97,10 +103,14 @@ function updateORSGeocodeQuotaIndicator(remaining, limit, reset) {
   const lim = limit != null ? parseInt(limit, 10) : null;
   if (isNaN(rem)) return;
 
+  // Sørg for at tælleren er synlig, når vi har gyldige data
+  span.style.display = "inline";
+
+  // Kun tal – ingen "Geo"
   if (!isNaN(lim) && lim > 0) {
-    span.textContent = `Geo ${rem}/${lim}`;
+    span.textContent = `${rem}/${lim}`;
   } else {
-    span.textContent = `Geo ${rem}`;
+    span.textContent = `${rem}`;
   }
 
   let tooltip = "OpenRouteService geocoding – resterende kald i denne periode";
