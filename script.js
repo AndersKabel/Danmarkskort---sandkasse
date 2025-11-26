@@ -579,6 +579,7 @@ var kommunegrænserLayer = L.geoJSON(null, {
     };
   }
 });
+var kommuneGeoJSON = null;
 
 fetch("https://api.dataforsyningen.dk/kommuner?format=geojson")
   .then(response => response.json())
