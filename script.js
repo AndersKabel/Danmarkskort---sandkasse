@@ -585,6 +585,7 @@ fetch("https://api.dataforsyningen.dk/kommuner?format=geojson")
   .then(response => response.json())
   .then(data => {
     kommunegrænserLayer.addData(data);
+    kommuneGeoJSON = data;
     console.log("Kommunegrænser hentet:", data);
   })
   .catch(err => console.error("Fejl ved hentning af kommunegrænser:", err));
