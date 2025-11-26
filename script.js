@@ -1424,32 +1424,40 @@ searchInput.addEventListener("input", function() {
 });
 
 searchInput.addEventListener("keydown", function(e) {
-  if (searchItems.length === 0) {
-    if (e.key === "Backspace" && searchInput.value.length === 0) {
-      // Sikkerhed: ryd listen hvis feltet er tomt
-      resultsList.innerHTML = "";
-      resultsList.style.display = "none";
-    }
-    return;
-  }
   if (e.key === "ArrowDown") {
+    if (searchItems.length === 0) return;
     e.preventDefault();
     searchCurrentIndex = (searchCurrentIndex + 1) % searchItems.length;
     highlightSearchItem();
   } else if (e.key === "ArrowUp") {
+    if (searchItems.length === 0) return;
     e.preventDefault();
     searchCurrentIndex = (searchCurrentIndex + searchItems.length - 1) % searchItems.length;
     highlightSearchItem();
   } else if (e.key === "Enter") {
+    if (searchItems.length === 0) return;
     e.preventDefault();
     if (searchCurrentIndex >= 0) {
       searchItems[searchCurrentIndex].click();
     }
   } else if (e.key === "Backspace") {
-    if (searchInput.value.length === 0) {
-      resetCoordinateBox();
+    // Når feltet bliver tømt med backspace, skal resultatliste, markør og infobokse væk
+    const currentLength = searchInput.value.length; // længde før tegnet slettes
+    if (currentLength <= 1) {
       resultsList.innerHTML = "";
       resultsList.style.display = "none";
+      searchItems = [];
+      searchCurrentIndex = -1;
+
+      document.getElementById("infoBox").style.display = "none";
+      document.getElementById("statsvejInfoBox").style.display = "none";
+      document.getElementById("kommuneOverlay").style.display = "none";
+      resetCoordinateBox();
+
+      if (!keepMarkersEnabled && currentMarker) {
+        map.removeLayer(currentMarker);
+        currentMarker = null;
+      }
     }
   }
 });
