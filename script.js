@@ -853,10 +853,15 @@ const overlayMaps = {
   // NYT: overlay til at beholde markører
   "Behold markører": keepMarkersLayer
 };
-
 // Tilføj vejrlag, hvis API-nøgle er sat
-if (weatherLayer) {
-  overlayMaps["Nedbør (OWM)"] = weatherLayer;
+if (weatherPrecipLayer) {
+  overlayMaps["Nedbør (OWM)"] = weatherPrecipLayer;
+}
+if (weatherTempLayer) {
+  overlayMaps["Temperatur (OWM)"] = weatherTempLayer;
+}
+if (weatherRainLayer) {
+  overlayMaps["Regn (OWM)"] = weatherRainLayer;
 }
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
