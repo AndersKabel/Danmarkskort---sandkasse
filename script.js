@@ -1754,8 +1754,14 @@ function doSearch(query, listElement) {
       coords: p.coords
     }));
 
-  // Udlands-tilstand styres af checkboxen
-  const foreignOnly = foreignSearchToggle && foreignSearchToggle.checked;
+   // Udlands-tilstand styres af checkboxen
+  // Forsøg først at finde et element med id="foreignSearchToggle"
+  // og fald tilbage til et evt. ældre id="foreignSearch"
+  const foreignToggleEl =
+    document.getElementById("foreignSearchToggle") ||
+    document.getElementById("foreignSearch");
+  const foreignOnly = !!(foreignToggleEl && foreignToggleEl.checked);
+
 
   // Promises til de forskellige datakilder
   let addrPromise;
