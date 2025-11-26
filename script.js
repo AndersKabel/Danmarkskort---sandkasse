@@ -1739,16 +1739,13 @@ function doSearch(query, listElement) {
   let stedUrl = `https://api.dataforsyningen.dk/rest/gsearch/v2.0/stednavn?q=${encodeURIComponent(query)}&limit=100&token=a63a88838c24fc85d47f32cde0ec0144`;
   const queryWithWildcard = query.trim().split(/\s+/).map(w => w + "*").join(" ");
   let roadUrl = `https://api.dataforsyningen.dk/navngivneveje?q=${encodeURIComponent(queryWithWildcard)}&per_side=20`;
-  let strandPromise = (map.hasLayer(redningsnrLayer) && strandposterReady)
+
+  // Strandposter (kun når laget er tændt og data er klar)
+  let strandPromiseBase = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
     : Promise.resolve([]);
 
-  // ORS-udenlandske adresser – kun hvis "Udland" er slået til
-  let orsPromise =
-    (foreignSearchToggle && foreignSearchToggle.checked)
-      ? geocodeORSForSearch(query)
-      : Promise.resolve([]);
-
+  // Evt. egne special-steder
   let customResults = customPlaces
     .filter(p => p.navn.toLowerCase().includes(query.toLowerCase()))
     .map(p => ({
@@ -1757,10 +1754,49 @@ function doSearch(query, listElement) {
       coords: p.coords
     }));
 
+  // Udlands-tilstand styres af checkboxen
+  const foreignOnly = foreignSearchToggle && foreignSearchToggle.checked;
+
+  // Promises til de forskellige datakilder
+  let addrPromise;
+  let stedPromise;
+  let roadPromise;
+  let strandPromise;
+  let orsPromise;
+
+  if (foreignOnly) {
+    // Når "Udland" er slået til:
+    //  - ingen Dataforsyningen-søgninger
+    //  - kun ORS (udenlandske adresser)
+    addrPromise   = Promise.resolve([]);
+    stedPromise   = Promise.resolve({});
+    roadPromise   = Promise.resolve([]);
+    strandPromise = Promise.resolve([]);
+    orsPromise    = geocodeORSForSearch(query);
+  } else {
+    // Normal tilstand: kun danske kilder, ingen ORS
+    addrPromise = fetch(addrUrl)
+      .then(r => r.json())
+      .catch(err => { console.error("Adresser fejl:", err); return []; });
+
+    stedPromise = fetch(stedUrl)
+      .then(r => r.json())
+      .catch(err => { console.error("Stednavne fejl:", err); return {}; });
+
+    roadPromise = fetch(roadUrl)
+      .then(r => r.json())
+      .catch(err => { console.error("Navngivne veje fejl:", err); return []; });
+
+    strandPromise = strandPromiseBase;
+
+    // ORS skal ikke kaldes, når Udland ikke er valgt
+    orsPromise = Promise.resolve([]);
+  }
+
   Promise.all([
-    fetch(addrUrl).then(r => r.json()).catch(err => { console.error("Adresser fejl:", err); return []; }),
-    fetch(stedUrl).then(r => r.json()).catch(err => { console.error("Stednavne fejl:", err); return {}; }),
-    fetch(roadUrl).then(r => r.json()).catch(err => { console.error("Navngivne veje fejl:", err); return []; }),
+    addrPromise,
+    stedPromise,
+    roadPromise,
     strandPromise,
     orsPromise
   ])
@@ -1769,12 +1805,14 @@ function doSearch(query, listElement) {
     searchItems = [];
     searchCurrentIndex = -1;
 
+    // Adresser (Dataforsyningen)
     let addrResults = (addrData || []).map(item => ({
       type: "adresse",
       tekst: item.tekst,
       adgangsadresse: item.adgangsadresse
     }));
 
+    // Stednavne
     let stedResults = [];
     if (stedData) {
       if (Array.isArray(stedData.results)) {
@@ -1794,6 +1832,7 @@ function doSearch(query, listElement) {
       }
     }
 
+    // Navngivne veje
     let roadResults = (roadData || []).map(item => ({
       type: "navngivenvej",
       navn: item.navn || item.adresseringsnavn || "",
@@ -1802,41 +1841,29 @@ function doSearch(query, listElement) {
       bbox: item.bbox
     }));
 
+    // Udenlandske adresser fra ORS
     let orsResults = (orsData || []).map(o => o);
-    
-// Hvis "Udland" er slået til, vil vi kun vise udenlandske adresser
-    const foreignOnly = foreignSearchToggle && foreignSearchToggle.checked;
 
-    // Strandposter + custom steder kan filtreres væk i udlands-tilstand
-    let strandResults = strandData || [];
-    let effectiveCustomResults = customResults;
-
+    // Samlet liste
+    let combined;
     if (foreignOnly) {
-      addrResults = [];
-      stedResults = [];
-      roadResults = [];
-      strandResults = [];
-      effectiveCustomResults = [];
-    }
-    
-    // NYT: Hvis "Udland" er slået til, fjern alle danske resultater
-    if (foreignSearchToggle && foreignSearchToggle.checked) {
-      addrResults  = [];
-      stedResults  = [];
-      roadResults  = [];
-      strandData   = [];
-      customResults = [];
+      // Når "Udland" er slået til: KUN udenlandske adresser
+      combined = [
+        ...orsResults
+      ];
+    } else {
+      // Normal tilstand: danske kilder + evt. egne steder
+      combined = [
+        ...addrResults,
+        ...stedResults,
+        ...roadResults,
+        ...(strandData || []),
+        ...customResults,
+        ...orsResults
+      ];
     }
 
-    let combined = [
-      ...addrResults,
-      ...stedResults,
-      ...roadResults,
-      ...strandResults,
-      ...effectiveCustomResults,
-      ...orsResults
-    ];
-
+    // Sortering (samme logik som før)
     combined.sort((a, b) => {
       const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom" || a.type === "ors_foreign");
       const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom" || b.type === "ors_foreign");
@@ -1845,6 +1872,7 @@ function doSearch(query, listElement) {
       return getSortPriority(a, query) - getSortPriority(b, query);
     });
 
+    // Byg liste-elementer
     combined.forEach(obj => {
       let li = document.createElement("li");
       if (obj.type === "strandpost") {
@@ -1993,6 +2021,7 @@ function doSearch(query, listElement) {
       listElement.appendChild(li);
       searchItems.push(li);
     });
+
     listElement.style.display = combined.length > 0 ? "block" : "none";
   })
   .catch(err => console.error("Fejl i doSearch:", err));
