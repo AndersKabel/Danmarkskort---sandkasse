@@ -545,7 +545,7 @@ if (OWM_API_KEY && OWM_API_KEY.trim() !== "") {
   weatherLayer = L.tileLayer(
     `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     {
-      opacity: 0.6,
+      opacity: 0.9,
       attribution: "Vejrdata © OpenWeatherMap"
     }
   );
