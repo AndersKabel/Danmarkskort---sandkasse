@@ -262,6 +262,25 @@ async function reverseGeocodeORS(lat, lon) {
 function isInDenmark(lat, lon) {
   return lat >= 54.3 && lat <= 58.0 && lon >= 7.5 && lon <= 15.5;
 }
+function isInDenmarkByPolygon(lat, lon) {
+  if (!kommuneGeoJSON || !kommuneGeoJSON.features) {
+    // Fallback til simpel bounding box, hvis kommunedata ikke er klar endnu
+    return isInDenmark(lat, lon);
+  }
+  try {
+    var point = turf.point([lon, lat]);
+    for (var i = 0; i < kommuneGeoJSON.features.length; i++) {
+      var feat = kommuneGeoJSON.features[i];
+      if (turf.booleanPointInPolygon(point, feat)) {
+        return true;
+      }
+    }
+    return false;
+  } catch (e) {
+    console.error("Fejl i isInDenmarkByPolygon:", e);
+    return isInDenmark(lat, lon);
+  }
+}
 
 /**
  * Hjælper: find koordinater (lat,lon) for en adresse-tekst
