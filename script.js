@@ -1755,7 +1755,7 @@ function doSearch(query, listElement) {
     }));
 
   // Udlands-tilstand styres af checkboxen
-  const foreignOnly = foreignSearch && foreignSearch.checked;
+  const foreignOnly = foreignSearchToggle && foreignSearchToggle.checked;
 
   // Promises til de forskellige datakilder
   let addrPromise;
