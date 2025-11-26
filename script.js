@@ -1803,7 +1803,22 @@ function doSearch(query, listElement) {
     }));
 
     let orsResults = (orsData || []).map(o => o);
+    
+// Hvis "Udland" er slået til, vil vi kun vise udenlandske adresser
+    const foreignOnly = foreignSearchToggle && foreignSearchToggle.checked;
 
+    // Strandposter + custom steder kan filtreres væk i udlands-tilstand
+    let strandResults = strandData || [];
+    let effectiveCustomResults = customResults;
+
+    if (foreignOnly) {
+      addrResults = [];
+      stedResults = [];
+      roadResults = [];
+      strandResults = [];
+      effectiveCustomResults = [];
+    }
+    
     // NYT: Hvis "Udland" er slået til, fjern alle danske resultater
     if (foreignSearchToggle && foreignSearchToggle.checked) {
       addrResults  = [];
@@ -1817,8 +1832,8 @@ function doSearch(query, listElement) {
       ...addrResults,
       ...stedResults,
       ...roadResults,
-      ...strandData,
-      ...customResults,
+      ...strandResults,
+      ...effectiveCustomResults,
       ...orsResults
     ];
 
