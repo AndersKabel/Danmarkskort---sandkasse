@@ -1754,14 +1754,13 @@ function doSearch(query, listElement) {
       coords: p.coords
     }));
 
-   // Udlands-tilstand styres af checkboxen
-  // Forsøg først at finde et element med id="foreignSearchToggle"
-  // og fald tilbage til et evt. ældre id="foreignSearch"
+  // Udlands-tilstand styres af checkboxen (Udland)
   const foreignToggleEl =
+    foreignSearchToggle ||
+    document.getElementById("enableForeignSearch") ||
     document.getElementById("foreignSearchToggle") ||
     document.getElementById("foreignSearch");
   const foreignOnly = !!(foreignToggleEl && foreignToggleEl.checked);
-
 
   // Promises til de forskellige datakilder
   let addrPromise;
@@ -1869,7 +1868,7 @@ function doSearch(query, listElement) {
       ];
     }
 
-    // Sortering (samme logik som før)
+    // Sortering
     combined.sort((a, b) => {
       const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom" || a.type === "ors_foreign");
       const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom" || b.type === "ors_foreign");
