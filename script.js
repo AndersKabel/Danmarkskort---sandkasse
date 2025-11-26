@@ -684,18 +684,41 @@ var ortofotoLayer = L.tileLayer.wms(
 );
 
 /***************************************************
- * Vejrlag (nedbør) – OpenWeatherMap tiles
+ * Vejrlag – OpenWeatherMap tiles
  * Kræver egen API-nøgle fra https://openweathermap.org/api
  ***************************************************/
 const OWM_API_KEY = "71886b99dfc71fdd19c9825cf0b995c1"; // <-- indsæt din nøgle her som STRING
-var weatherLayer = null;
+
+// Nedbør, temperatur og (valgfrit) kraftig regn
+var weatherPrecipLayer = null;   // nedbør (som du har nu)
+var weatherTempLayer   = null;   // temperatur
+var weatherRainLayer   = null;   // mere "radar-agtig" regn (valgfri)
 
 // Opret vejrlag hvis der faktisk står en nøgle
 if (OWM_API_KEY && OWM_API_KEY.trim() !== "") {
-  weatherLayer = L.tileLayer(
+  // Nedbør (modelbaseret nedbør / skyer)
+  weatherPrecipLayer = L.tileLayer(
     `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
     {
-      opacity: 2.5,
+      opacity: 0.7,
+      attribution: "Vejrdata © OpenWeatherMap"
+    }
+  );
+
+  // Temperatur – farvekort over temperatur i overfladen
+  weatherTempLayer = L.tileLayer(
+    `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+    {
+      opacity: 0.7,
+      attribution: "Vejrdata © OpenWeatherMap"
+    }
+  );
+
+  // Kraftigere regn (valgfri) – kan kommenteres ud hvis du ikke vil have den
+  weatherRainLayer = L.tileLayer(
+    `https://tile.openweathermap.org/map/rain_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+    {
+      opacity: 0.7,
       attribution: "Vejrdata © OpenWeatherMap"
     }
   );
