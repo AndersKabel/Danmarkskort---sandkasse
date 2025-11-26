@@ -362,27 +362,31 @@ async function geocodeORSForSearch(query) {
 /**
  * Hjælper: ORS reverse geocoding (til klik i udlandet)
  */
+/**
+ * Hjælper: ORS reverse geocoding (til klik i udlandet)
+ */
 async function reverseGeocodeORS(lat, lon) {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return null;
   try {
     const url = `https://api.openrouteservice.org/geocode/reverse?api_key=${ORS_API_KEY}&point.lat=${lat}&point.lon=${lon}&size=1`;
     const resp = await fetch(url);
-    if (!resp.ok) {
-      console.error("ORS reverse geocode fejl:", resp.status, resp.statusText);
-      return null;
-    }
 
+    // Opdater geocode-tæller ud fra headers (hvis de findes)
     try {
       const remaining = resp.headers.get("x-ratelimit-remaining");
       const limit = resp.headers.get("x-ratelimit-limit");
       const reset = resp.headers.get("x-ratelimit-reset");
       if (remaining != null) {
-        updateORSGeocodeIndicator(remaining, limit, reset);
+        updateORSGeocodeQuotaIndicator(remaining, limit, reset);
       }
     } catch (e) {
-      console.warn("Kunne ikke læse ORS geocode rate-limit headers (reverseGeocodeORS):", e);
+      console.warn("Kunne ikke læse ORS geocode rate-limit headers (reverse):", e);
     }
 
+    if (!resp.ok) {
+      console.error("ORS reverse geocode fejl:", resp.status, resp.statusText);
+      return null;
+    }
     const data = await resp.json();
     if (!data.features || data.features.length === 0) return null;
     return data.features[0];
