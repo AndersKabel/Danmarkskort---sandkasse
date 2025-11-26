@@ -448,18 +448,10 @@
 }
 /* ORS geocode tæller (Udland) */
 .ors-quota-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 70px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 4px;
-  margin-left: 4px;
-  font-size: 11px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: rgba(255, 255, 255, 0.9);
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 13px;
   color: #333;
   white-space: nowrap;
 }
+
