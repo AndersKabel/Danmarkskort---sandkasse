@@ -884,7 +884,7 @@ map.on('click', function(e) {
 
   setCoordinateBox(lat, lon);
 
-  if (isInDenmark(lat, lon)) {
+  if (isInDenmarkByPolygon(lat, lon)) {
     // DK: Dataforsyningen
     let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
     fetch(revUrl)
