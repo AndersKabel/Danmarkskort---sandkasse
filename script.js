@@ -301,27 +301,31 @@ async function geocodeORSFirst(text) {
 /**
  * Hjælper: ORS geocoding til søgelisten (kun udenlandske adresser)
  */
+/**
+ * Hjælper: ORS geocoding til søgelisten (kun udenlandske adresser)
+ */
 async function geocodeORSForSearch(query) {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return [];
   try {
     const url = `https://api.openrouteservice.org/geocode/search?api_key=${ORS_API_KEY}&text=${encodeURIComponent(query)}&size=5`;
     const resp = await fetch(url);
-    if (!resp.ok) {
-      console.error("ORS geocode (search) fejl:", resp.status, resp.statusText);
-      return [];
-    }
 
+    // Opdater geocode-tæller ud fra headers (hvis de findes)
     try {
       const remaining = resp.headers.get("x-ratelimit-remaining");
       const limit = resp.headers.get("x-ratelimit-limit");
       const reset = resp.headers.get("x-ratelimit-reset");
       if (remaining != null) {
-        updateORSGeocodeIndicator(remaining, limit, reset);
+        updateORSGeocodeQuotaIndicator(remaining, limit, reset);
       }
     } catch (e) {
-      console.warn("Kunne ikke læse ORS geocode rate-limit headers (geocodeORSForSearch):", e);
+      console.warn("Kunne ikke læse ORS geocode rate-limit headers (search):", e);
     }
 
+    if (!resp.ok) {
+      console.error("ORS geocode (search) fejl:", resp.status, resp.statusText);
+      return [];
+    }
     const data = await resp.json();
     if (!data.features || data.features.length === 0) return [];
 
