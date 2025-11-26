@@ -78,6 +78,61 @@ function updateORSQuotaIndicator(remaining, limit) {
     btn.title = `ORS Directions: ${rem} kald tilbage i denne periode`;
   }
 }
+/**
+ * Hjælper: opdater Udland/Geocode-tæller ved søgefeltet
+ * Bruges af ORS Geocode Search / Reverse.
+ */
+function updateORSGeocodeQuotaIndicator(remaining, limit, reset) {
+  const span = document.getElementById("orsGeocodeQuota");
+  if (!span) return;
+
+  if (remaining == null) {
+    // Hvis vi ikke kan læse headeren, ryd teksten
+    span.textContent = "";
+    span.title = "";
+    return;
+  }
+
+  const rem = parseInt(remaining, 10);
+  const lim = limit != null ? parseInt(limit, 10) : null;
+  if (isNaN(rem)) return;
+
+  if (!isNaN(lim) && lim > 0) {
+    span.textContent = `Geo ${rem}/${lim}`;
+  } else {
+    span.textContent = `Geo ${rem}`;
+  }
+
+  let tooltip = "OpenRouteService geocoding – resterende kald i denne periode";
+  if (!isNaN(lim) && lim > 0) {
+    tooltip += `: ${rem}/${lim}`;
+  } else {
+    tooltip += `: ${rem}`;
+  }
+
+  // Forsøg at udlede hvornår kvoten fornyes ud fra x-ratelimit-reset (hvis eksisterer)
+  if (reset != null) {
+    const resetNum = parseInt(reset, 10);
+    if (!isNaN(resetNum) && resetNum > 0) {
+      let resetDate;
+      if (resetNum > 1e12) {
+        // Millisekund Unix-timestamp
+        resetDate = new Date(resetNum);
+      } else if (resetNum > 1e9) {
+        // Sekund Unix-timestamp
+        resetDate = new Date(resetNum * 1000);
+      } else {
+        // Antal sekunder fra nu
+        resetDate = new Date(Date.now() + resetNum * 1000);
+      }
+      const hh = String(resetDate.getHours()).padStart(2, "0");
+      const mm = String(resetDate.getMinutes()).padStart(2, "0");
+      tooltip += ` (fornyes ca. kl. ${hh}:${mm})`;
+    }
+  }
+
+  span.title = tooltip;
+}
 
 /**
  * Hjælper: opdater Udland-tæller (geocode) ved søgefeltet
