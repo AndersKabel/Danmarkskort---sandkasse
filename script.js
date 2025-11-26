@@ -255,6 +255,18 @@ async function geocodeORSForSearch(query) {
       console.error("ORS geocode (search) fejl:", resp.status, resp.statusText);
       return [];
     }
+
+    try {
+      const remaining = resp.headers.get("x-ratelimit-remaining");
+      const limit = resp.headers.get("x-ratelimit-limit");
+      const reset = resp.headers.get("x-ratelimit-reset");
+      if (remaining != null) {
+        updateORSGeocodeIndicator(remaining, limit, reset);
+      }
+    } catch (e) {
+      console.warn("Kunne ikke læse ORS geocode rate-limit headers (geocodeORSForSearch):", e);
+    }
+
     const data = await resp.json();
     if (!data.features || data.features.length === 0) return [];
 
