@@ -80,6 +80,47 @@ function updateORSQuotaIndicator(remaining, limit) {
 }
 
 /**
+ * Hjælper: opdater Udland-tæller (geocode) ved søgefeltet
+ * Bruger ORS' egne rate-limit headers, når de er tilgængelige.
+ */
+function updateORSGeocodeIndicator(remaining, limit, reset) {
+  const el = document.getElementById("orsGeocodeQuota");
+  if (!el) return;
+
+  if (remaining == null) {
+    el.textContent = "";
+    el.title = "";
+    return;
+  }
+
+  const rem = parseInt(remaining, 10);
+  const lim = limit != null ? parseInt(limit, 10) : null;
+
+  if (isNaN(rem)) {
+    el.textContent = "";
+    el.title = "";
+    return;
+  }
+
+  if (!isNaN(lim)) {
+    el.textContent = `${rem}/${lim}`;
+    el.title = `ORS Geocode: ${rem}/${lim} kald tilbage i denne periode`;
+  } else {
+    el.textContent = `${rem}`;
+    el.title = `ORS Geocode: ${rem} kald tilbage i denne periode`;
+  }
+
+  // Valgfrit: vis hvornår kvoten nulstilles, hvis ORS sender en reset-header
+  if (reset != null && reset !== "") {
+    const resetNum = parseInt(reset, 10);
+    if (!isNaN(resetNum)) {
+      const resetDate = new Date(resetNum * 1000);
+      el.title += `\nNulstilles ca.: ${resetDate.toLocaleString()}`;
+    }
+  }
+}
+
+/**
  * Hjælper: kald ORS Directions API som GeoJSON
  * coordinates: array af [lon, lat]
  * profile: fx "driving-car", "cycling-regular"
