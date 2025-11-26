@@ -1277,6 +1277,16 @@ var vej2List     = document.getElementById("results-vej2");
 
 // Checkbox til at styre udenlandsk søgning
 var foreignSearchToggle = document.getElementById("enableForeignSearch") || document.getElementById("foreignSearchToggle") || document.getElementById("foreignSearch");
+var orsGeocodeQuotaSpan = document.getElementById("orsGeocodeQuota");
+if (orsGeocodeQuotaSpan) {
+  orsGeocodeQuotaSpan.style.display =
+    (foreignSearchToggle && foreignSearchToggle.checked) ? "inline" : "none";
+}
+if (foreignSearchToggle && orsGeocodeQuotaSpan) {
+  foreignSearchToggle.addEventListener("change", function () {
+    orsGeocodeQuotaSpan.style.display = this.checked ? "inline" : "none";
+  });
+}
 
 // Rute-felter
 var routeFromInput = document.getElementById("routeFrom");
