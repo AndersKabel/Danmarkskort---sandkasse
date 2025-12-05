@@ -1489,26 +1489,7 @@ searchInput.addEventListener("input", function() {
   clearBtn.style.display = "inline";
   debouncedMainSearch(txt);
 });
-  const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
-  if (coordRegex.test(txt)) {
-    const match = txt.match(coordRegex);
-    const latNum = parseFloat(match[1]);
-    const lonNum = parseFloat(match[2]);
-    let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lonNum}&y=${latNum}&struktur=flad`;
-    fetch(revUrl)
-      .then(r => r.json())
-      .then(data => {
-        resultsList.innerHTML = "";
-        resultsList.style.display = "none";
-        placeMarkerAndZoom([latNum, lonNum], `Koordinater: ${latNum.toFixed(5)}, ${lonNum.toFixed(5)}`);
-        setCoordinateBox(latNum, lonNum);
-        updateInfoBox(data, latNum, lonNum);
-      })
-      .catch(err => console.error("Reverse geocoding fejl:", err));
-    return;
-  }
-});
-
+  
 searchInput.addEventListener("keydown", function(e) {
   if (e.key === "ArrowDown") {
     if (searchItems.length === 0) return;
