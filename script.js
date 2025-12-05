@@ -1440,6 +1440,9 @@ function fillRouteFieldsFromClick(data, lat, lon) {
 /***************************************************
  * Hoved-søg (#search) => doSearch
  ***************************************************/
+const debouncedMainSearch = debounce(function(queryText) {
+  doSearch(queryText, resultsList);
+}, 350);
 searchInput.addEventListener("input", function() {
   // Ny søgning: skjul info-bokse, marker mv.
   document.getElementById("infoBox").style.display = "none";
