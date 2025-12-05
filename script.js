@@ -1584,14 +1584,15 @@ const debouncedVej2Search = debounce(function(searchText) {
 }, 350);
 vej1Input.addEventListener("input", function() {
   const txt = vej1Input.value.trim();
-  if (txt.length < 2) {
+  if (txt.length < 3) {
     vej1List.innerHTML = "";
     vej1List.style.display = "none";
     vej1Items = [];
     return;
   }
-  doSearchRoad(txt, vej1List, vej1Input, "vej1");
+  debouncedVej1Search(txt);
 });
+
 vej1Input.addEventListener("keydown", function(e) {
   if (e.key === "Backspace") {
     document.getElementById("infoBox").style.display = "none";
