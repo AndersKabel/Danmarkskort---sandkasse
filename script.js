@@ -1575,6 +1575,13 @@ clearBtn.addEventListener("click", function() {
 /***************************************************
  * Vej1 / Vej2
  ***************************************************/
+const debouncedVej1Search = debounce(function(searchText) {
+  doSearchRoad(searchText, vej1List, vej1Input, "vej1");
+}, 350);
+
+const debouncedVej2Search = debounce(function(searchText) {
+  doSearchRoad(searchText, vej2List, vej2Input, "vej2");
+}, 350);
 vej1Input.addEventListener("input", function() {
   const txt = vej1Input.value.trim();
   if (txt.length < 2) {
