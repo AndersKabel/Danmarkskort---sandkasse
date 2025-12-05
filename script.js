@@ -1780,9 +1780,13 @@ function highlightRouteItem(type) {
 function setupRouteInputHandlers(inputElement, listElement, type) {
   if (!inputElement || !listElement) return;
 
+  const debouncedRouteSearch = debounce(function(searchText) {
+    doRouteSearch(searchText, listElement, type);
+  }, 350);
+
   inputElement.addEventListener("input", function() {
     const txt = inputElement.value.trim();
-    if (txt.length < 2) {
+    if (txt.length < 3) {
       listElement.innerHTML = "";
       listElement.style.display = "none";
       if (type === "from") {
@@ -1800,7 +1804,7 @@ function setupRouteInputHandlers(inputElement, listElement, type) {
       }
       return;
     }
-    doRouteSearch(txt, listElement, type);
+    debouncedRouteSearch(txt);
   });
 
   inputElement.addEventListener("keydown", function(e) {
