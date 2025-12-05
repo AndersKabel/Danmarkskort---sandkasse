@@ -636,6 +636,19 @@ function getSortPriority(item, query) {
   }
 }
 
+function debounce(fn, delay) {
+  let timeoutId;
+  return function(...args) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    const context = this;
+    timeoutId = setTimeout(function() {
+      fn.apply(context, args);
+    }, delay);
+  };
+}
+
 /***************************************************
  * Funktioner til automatisk dataopdatering (24 timer)
  ***************************************************/
