@@ -1622,13 +1622,13 @@ function highlightVej1Item() {
 
 vej2Input.addEventListener("input", function() {
   const txt = vej2Input.value.trim();
-  if (txt.length < 2) {
+  if (txt.length < 3) {
     vej2List.innerHTML = "";
     vej2List.style.display = "none";
     vej2Items = [];
     return;
   }
-  doSearchRoad(txt, vej2List, vej2Input, "vej2");
+  debouncedVej2Search(txt);
 });
 vej2Input.addEventListener("keydown", function(e) {
   document.getElementById("infoBox").style.display = "none";
