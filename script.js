@@ -1454,7 +1454,30 @@ searchInput.addEventListener("input", function() {
   resetCoordinateBox();
 
   const txt = searchInput.value.trim();
-  if (txt.length < 2) {
+
+  const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
+  if (coordRegex.test(txt)) {
+    const match = txt.match(coordRegex);
+    const latNum = parseFloat(match[1]);
+    const lonNum = parseFloat(match[2]);
+    let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lonNum}&y=${latNum}&struktur=flad`;
+    fetch(revUrl)
+      .then(r => r.json())
+      .then(data => {
+        resultsList.innerHTML = "";
+        resultsList.style.display = "none";
+        placeMarkerAndZoom(
+          [latNum, lonNum],
+          `Koordinater: ${latNum.toFixed(5)}, ${lonNum.toFixed(5)}`
+        );
+        setCoordinateBox(latNum, lonNum);
+        updateInfoBox(data, latNum, lonNum);
+      })
+      .catch(err => console.error("Reverse geocoding fejl:", err));
+    return;
+  }
+
+  if (txt.length < 3) {
     clearBtn.style.display = "none";
     resultsList.innerHTML = "";
     resultsList.style.display = "none"; // VIGTIGT: skjul listen helt
@@ -1462,9 +1485,10 @@ searchInput.addEventListener("input", function() {
     searchItems = [];
     return;
   }
+
   clearBtn.style.display = "inline";
-  doSearch(txt, resultsList);
-  
+  debouncedMainSearch(txt);
+});
   const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
   if (coordRegex.test(txt)) {
     const match = txt.match(coordRegex);
