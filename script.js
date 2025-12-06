@@ -1986,6 +1986,86 @@ function doSearchStrandposter(query) {
 }
 
 /***************************************************
+ * Hurtig søgning kun i strandposter (uden debounce)
+ * Bruges når "Strandposter"-laget er tændt
+ ***************************************************/
+function handleStrandpostClick(obj, listElement) {
+  setCoordinateBox(obj.lat, obj.lon);
+  placeMarkerAndZoom([obj.lat, obj.lon], obj.tekst);
+
+  listElement.innerHTML = "";
+  listElement.style.display = "none";
+
+  let marker = currentMarker;
+  let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${obj.lon}&y=${obj.lat}&struktur=flad`;
+
+  fetch(revUrl)
+    .then(r => r.json())
+    .then(revData => {
+      const vejnavn     = revData?.adgangsadresse?.vejnavn     || revData?.vejnavn || "?";
+      const husnr       = revData?.adgangsadresse?.husnr       || revData?.husnr   || "";
+      const postnr      = revData?.adgangsadresse?.postnr      || revData?.postnr  || "?";
+      const postnrnavn  = revData?.adgangsadresse?.postnrnavn  || revData?.postnrnavn || "";
+      const adresseStr  = `${vejnavn} ${husnr}, ${postnr} ${postnrnavn}`;
+      const evaFormat   = `${vejnavn},${husnr},${postnr}`;
+      const notesFormat = `${vejnavn} ${husnr}, ${postnr} ${postnrnavn}`;
+
+      if (marker) {
+        marker.bindPopup(`
+          <strong>${obj.tekst}</strong><br>
+          ${adresseStr}<br>
+          <a href="#" title="Kopier til Eva.net" onclick="(function(el){ el.style.color='red'; copyToClipboard('${evaFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Eva.Net</a>
+          &nbsp;
+          <a href="#" title="Kopier til Notes" onclick="(function(el){ el.style.color='red'; copyToClipboard('${notesFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Notes</a>
+        `).openPopup();
+
+        marker.on("popupclose", function () {
+          map.removeLayer(marker);
+          currentMarker = null;
+          document.getElementById("infoBox").style.display = "none";
+          document.getElementById("statsvejInfoBox").style.display = "none";
+          resetCoordinateBox();
+          resultsList.innerHTML = "";
+          resultsList.style.display = "none";
+        });
+      }
+    })
+    .catch(err => {
+      console.error("Reverse geocoding for strandpost fejlede:", err);
+      if (marker) {
+        marker.bindPopup(`<strong>${obj.tekst}</strong><br>(Reverse geocoding fejlede)`).openPopup();
+      }
+    });
+}
+
+function quickStrandSearch(query) {
+  // Skal kun bruges når Strandposter-laget er aktivt
+  if (!map.hasLayer(redningsnrLayer)) return;
+
+  doSearchStrandposter(query)
+    .then(strandResults => {
+      resultsList.innerHTML = "";
+      searchItems = [];
+      searchCurrentIndex = -1;
+
+      strandResults.forEach(obj => {
+        const li = document.createElement("li");
+        li.innerHTML = `🛟 ${obj.tekst}`;
+        li.addEventListener("click", function() {
+          handleStrandpostClick(obj, resultsList);
+        });
+        resultsList.appendChild(li);
+        searchItems.push(li);
+      });
+
+      resultsList.style.display = strandResults.length > 0 ? "block" : "none";
+    })
+    .catch(err => {
+      console.error("Fejl i quickStrandSearch:", err);
+    });
+}
+
+/***************************************************
  * doSearch => kombinerer adresser, stednavne, specialsteder,
  * navngivne veje, strandposter og udenlandske ORS-adresser
  ***************************************************/
