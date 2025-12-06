@@ -319,17 +319,19 @@
    NYT: Udland-infoboks
 ============================ */
 #foreignInfoBox {
-  position: absolute;
-  top: 85px;           /* placeret lige under søgefeltet */
-  left: 10px;
-  width: 360px;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 8px 30px 8px 10px;
+  position: fixed;                 /* centreret i viewport i stedet for i sidebar */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 500px;
+  width: calc(100% - 40px);        /* lidt luft til kanterne på små skærme */
+  background: rgba(255, 255, 255, 0.97);
+  padding: 10px 36px 10px 14px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   font-size: 13px;
-  z-index: 1200;
-  display: none;       /* skjult som udgangspunkt */
+  z-index: 2000;                   /* over resten af UI’et */
+  display: none;                   /* skjult som udgangspunkt */
 }
 
 #foreignInfoBox p {
