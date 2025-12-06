@@ -2295,14 +2295,17 @@ function doSearch(query, listElement) {
     // Byg liste-elementer
     combined.forEach(obj => {
       let li = document.createElement("li");
-      if (obj.type === "strandpost") {
+            if (obj.type === "strandpost") {
         li.innerHTML = `🛟 ${obj.tekst}`;
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
       } else if (obj.type === "navngivenvej") {
         li.innerHTML = `🛣️ ${obj.navn}`;
-      } else if (obj.type === "stednavn" || obj.type === "custom") {
+      } else if (obj.type === "stednavn") {
         li.innerHTML = `📍 ${obj.navn}`;
+      } else if (obj.type === "custom") {
+        let extra = obj.adresse ? " – " + obj.adresse : "";
+        li.innerHTML = `⭐ ${obj.navn}${extra}`;
       } else if (obj.type === "ors_foreign") {
         li.innerHTML = `🌍 ${obj.label}`;
       }
