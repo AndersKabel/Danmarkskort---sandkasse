@@ -2616,11 +2616,16 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
-  // Deaktivér "Udland"-søgning hvis ORS-nøgle mangler
+    // Deaktivér "Udland"-søgning hvis ORS-nøgle mangler
   if (foreignSearchToggle && (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY"))) {
     foreignSearchToggle.checked = false;
     foreignSearchToggle.disabled = true;
     foreignSearchToggle.title = "Udland-søgning kræver en gyldig OpenRouteService API-nøgle";
+
+    // Sørg for at infoboksen ikke vises, hvis Udland ikke kan bruges
+    if (foreignInfoBox) {
+      foreignInfoBox.style.display = "none";
+    }
   }
 
   // Auto-opdater rute når profil/præference ændres – men kun hvis der allerede er en rute
