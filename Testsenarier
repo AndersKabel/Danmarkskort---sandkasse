@@ -1,0 +1,130 @@
+1. Tjek at kortet loader som det skal
+
+2. Søgefelt (adresse):
+* Tast adresse Oksenbjergevej 28, 7323
+  - Tjek at autocomplete virker
+  - Tjek at stednavn kommer øverst i result list (når der er tastet Oksenbjerge)
+  - Tjek at vejen "Oksenbjergevej" kommer som et vej resultat
+  - Tjek at piletasterne virker (highlighter result list)
+  - Tjek at man kan vælge adresse med Enter
+  - Tjek at place marker and zoom virker
+* Tjek at google streetview link virker
+  - Åbner op i ny fane og på valgte adresse
+* Tjek at Skråfoto link virker
+  - Åbner op i ny fane 
+  - Tjek at der lige pauses ca 1 sek. og info (kopierret udklipsholder) vises
+  - Tjek at når man CTRL+V i skråfoto får indsat den valgte adresse fra kortet
+* Tjek at den korrekte adresse vises i info-boksen
+* Tjek ved klik på Eva.Net at der kopieres i formatet: Oksenbjergevej,28,7323 
+* Tjek ved klik på Notes, at der kopieres i formatet: Oksenbjergevej 28, 7323 Give
+* Tjek at der vises kommune navn samt info omkring døde dyr og gader og veje.
+* Tjek at der vises politikreds
+* Tjek at ved valg af radius 10 km at der sættes en ring på en radius af 10 km centreret fra valgte adresse 
+  - Tjek det samme for 50 og 100 km. 
+  - Tjek at cirklen forsvinder igen når man klikker på den igen.
+* Tjek at der sættes koordinater i bunden af skærmen
+* Tjek at der sættes kommunekode og vejkode nederst i venstre side
+* Tjek at info-boksen, marker, kommunekode og vejkode slettes, når man trykker på kryds i info-boksen
+  - Tjek det samme ved klik på kryds i search feltet
+
+3. Klik på kort:
+* Tjek at google streetview link virker
+  - Åbner op i ny fane og på valgte adresse
+* Tjek at Skråfoto link virker
+  - Åbner op i ny fane 
+  - Tjek at der lige pauses ca 1 sek. og info (kopierret udklipsholder) vises
+  - Tjek at når man CTRL+V i skråfoto får indsat den valgte adresse fra kortet
+* Tjek at den korrekte adresse vises i info-boksen
+* Tjek ved klik på Eva.Net at der kopieres i formatet: Oksenbjergevej,28,7323 
+* Tjek ved klik på Notes, at der kopieres i formatet: Oksenbjergevej 28, 7323 Give
+* Tjek at der vises kommune navn samt info omkring døde dyr og gader og veje.
+* Tjek at der vises politikreds.
+* Tjek at ved valg af radius 10 km at der sættes en ring på en radius af 10 km centreret fra valgte adresse 
+  - Tjek det samme for 50 og 100 km. 
+  - Tjek at cirklen forsvinder igen når man klikker på den igen.
+* Tjek at der sættes koordinater i bunden af skærmen
+* Tjek at der sættes kommunekode og vejkode nederst i venstre side
+* Tjek at info-boksen og marker slettes, når man trykker på kryds i info-boksen
+  - Tjek det samme ved klik på kryds i search feltet
+
+4. Find statsvej funktionen:
+* Tjek ved klik på kortet (ikke på en vej), tjek at der ikke vises nogen ekstra boks med info (kun infoboksen skal dukke op)
+* Tjek ved klik på kortet (på en vej), tjek at der kommer en ekstra boks op der fortæller:
+ - Administrativt nummer
+ - Forgrening
+ - Vejnavn
+ - Bestyrer
+ - Vejtype
+* Tjek ved klik på en statsvej, at der kommer en ekstra boks op der fortæller:
+ - Administrativt nummer
+ - Forgrening
+ - Vejnavn
+ - Bestyrer
+ - Vejtype
+* Tjek at begge infobokse forsvinder ved klik på kryds i en af boksene.
+
+5. Find vejkryds funktionen: 
+* Tjek at autocomplete virker i både vej1 og vej2 felterne
+* Tjek at der vises adresse + by + postnummer i parentes i begge felter
+* Tjek at piletasterne virker 
+* Tjek at vælg adresse med Enter virker for begge felter
+* Tjek at TAB tasten virker
+* Tjek at place marker and zoom virker og der kommer en lille popup vindue med nærmeste adresse og Eva.Net og Notes.
+* Tjek kopierfunktion og format for begge (samme fra infoboksen)
+* Tjek at popup boks forsvinder ved klik på kryds
+* Tjek at klik på kryds i vej1 eller vej2 felterne kun sletter vejnavnet for den pågældende boks.
+
+6. Layer funktionen: 
+* Tjek at hvert lag kaldes og fjernes igen når det vælges fra.
+* Tjek at "Ladestander" layer beder om radius, før den kan vise noget
+* Tjek at "Behold markører" sætter flere markører og de fjernes igen, når layer fravælges.
+
+7. Strandposter
+* Tjek at når strandposter laget er kaldt, at man så kan søge på strandposter (f.eks. C031).
+  - Tjek at piletaster virker og man kan vælge Redningsnummer med Enter
+  - Tjek at når Strandpost vælges, at der så zommes til Strandpost og pop-up vindue vises samt marker placeres.
+  - Tjek at pop-up vinduet forsvinder når der trykkes på kryds i pop-up vindue eller i search feltet.
+  - Tjek kopiformatet på Eva.Net (Oksenbjergevej,28,7323) og Notes (Oksenbjergevej 28, 7323 Give) er korrekte
+  - Tjek at pop-up vinduet og marker forsvinder når man trykker på krydset i vinduet og/eller kryds i search feltet.
+
+8. Koordinat funktionen
+* Klik på kortet
+  - Tjek at der sættes koordinater i koordinatboksen
+  - Tjek at "nærmeste valide adresse" sættes i info box
+  - Tjek at kommune, samt GEMS info og politikreds sætttes
+* Indsæt test koordinater: 56.416940,9.574585
+  - Tjek at "nærmeste valide adresse" sættes i info box
+  - Tjek at kommune, samt GEMS info og politikreds sætttes
+
+9. Udlands søgning
+* Søg Berlin i search feltet
+  - Tjek at der kun kommer danske adresser frem i resultlisten.
+* Marker i boksen "Udland"
+  - Tjek at der kommer en lille infoboks med beskrivelse af funktionen.
+* Søg igen på Berlin i search feltet
+  - Tjek at der kun kommer udenlandske adresser i searchfeltet
+  - Tjek at tælleren viser hvor mange søgninger der er tilbage (1000 om dagen)
+  - Vælg adressen og tjek at der zoomes til adressen og info boksen sættes rigtigt.
+* Klik på kortet
+  - Tjek at infoboksen sættes rigtigt med "Nærmeste valide adresse" og "Åbn i google street view"
+  - Tjek at "kopier til" Eva.Net og Notes gemmer de rigtige formater
+  - Tjek at tælleren skifter til tæller for klik på kortet (1000 om dagen)
+
+10. Rute funktionen
+* Aktiver "Rute"
+  - Tjek at Search boksen udvides og felterne: Fra, Til og Via samt Profil og Præference vises
+  - Tjek at når der indsættes adresser i felter, at Resutlist så står pænt og bredt, så man kan læse adresserne der foreslåes.
+  - Tjek at Stednavne virker på søgning i alle felter
+  - Tjek at rute beregnes når der trykkes på Start og tæller aktiveres (vises under "Start")
+  - Tjek at den viser beregnet længde og tid
+  - Tjek at der indsættes adresse i "første tomme" felt (Fra, Til, Via) hvis der er et, ved klik på kortet.
+  - Tjek at den genberegner ruten vis der tilføjes et Via punkt og der trykkes Start.
+  - Tjek at den automatisk genberegner ruten hvis der ændres i indstillingerne i enten Profil eller Præference
+  - Tjek at alt fjernes ved klik på Ryd knappen
+  - Tjek at felterne foldes sammen igen, ved klik på Rute knappen
+
+11. Radius knapperne
+* Aktiver de forskellige radiusser
+  - Tjek at der kommer en lille infobox hvis der ikke er valgt et punkt/adresse
+  - Tjek at der sættes en radiusring der svarer til valget
+  - Tjek at radiusringen forsvinder igen ved deaktivering
