@@ -1483,6 +1483,7 @@ searchInput.addEventListener("input", function() {
 
   const txt = searchInput.value.trim();
 
+  // Hvis brugeren skriver koordinater "lat, lon"
   const coordRegex = /^(-?\d+(?:\.\d+))\s*,\s*(-?\d+(?:\.\d+))$/;
   if (coordRegex.test(txt)) {
     const match = txt.match(coordRegex);
@@ -1505,12 +1506,26 @@ searchInput.addEventListener("input", function() {
     return;
   }
 
-  if (txt.length < 3) {
+  // Tomt felt => ryd alt
+  if (txt.length === 0) {
     clearBtn.style.display = "none";
     resultsList.innerHTML = "";
-    resultsList.style.display = "none"; // VIGTIGT: skjul listen helt
+    resultsList.style.display = "none";
     document.getElementById("infoBox").style.display = "none";
     searchItems = [];
+    return;
+  }
+
+  // Hvis Strandposter-laget er aktivt, laver vi en lokal søgning
+  // uden debounce og uden min. længde
+  if (map.hasLayer(redningsnrLayer)) {
+    quickStrandSearch(txt);
+  }
+
+  // For at skåne eksterne API'er beholder vi stadig
+  // min. 3 tegn + debounce for de almindelige søgninger
+  if (txt.length < 3) {
+    clearBtn.style.display = "inline";
     return;
   }
 
