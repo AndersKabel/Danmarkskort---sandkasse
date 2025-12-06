@@ -1383,25 +1383,57 @@ function addClearButton(inputElement, listElement) {
   btn.innerHTML = "&times;";
   btn.classList.add("clear-button");
   inputElement.parentElement.appendChild(btn);
+
+  // Vis/skjul krydset afhængigt af om der står noget i feltet
   inputElement.addEventListener("input", function () {
     btn.style.display = inputElement.value.length > 0 ? "inline" : "none";
   });
+
+  // Klik på kryds = ryd felt, resultatliste, bokse og markør
   btn.addEventListener("click", function () {
     inputElement.value = "";
     listElement.innerHTML = "";
     listElement.style.display = "none";
     btn.style.display = "none";
     resetCoordinateBox();
-  });
-  inputElement.addEventListener("keydown", function (e) {
-    if (e.key === "Backspace" && inputElement.value.length === 0) {
-      listElement.innerHTML = "";
-      listElement.style.display = "none";
-      resetCoordinateBox();
+
+    // Skjul info-bokse og kommune-overlay
+    document.getElementById("infoBox").style.display = "none";
+    document.getElementById("statsvejInfoBox").style.display = "none";
+    document.getElementById("kommuneOverlay").style.display = "none";
+
+    // Fjern markør – med respekt for "Behold markører"
+    if (!keepMarkersEnabled && currentMarker) {
+      map.removeLayer(currentMarker);
+      currentMarker = null;
     }
   });
+
+  // Backspace: når feltet er ved at blive tomt (0 tegn efter tast),
+  // rydder vi resultater, bokse og markør – uden ekstra tryk
+  inputElement.addEventListener("keydown", function (e) {
+    if (e.key === "Backspace") {
+      const currentLength = inputElement.value.length; // længde før tegnet slettes
+      if (currentLength <= 1) {
+        listElement.innerHTML = "";
+        listElement.style.display = "none";
+        resetCoordinateBox();
+
+        document.getElementById("infoBox").style.display = "none";
+        document.getElementById("statsvejInfoBox").style.display = "none";
+        document.getElementById("kommuneOverlay").style.display = "none";
+
+        if (!keepMarkersEnabled && currentMarker) {
+          map.removeLayer(currentMarker);
+          currentMarker = null;
+        }
+      }
+    }
+  });
+
   btn.style.display = "none";
 }
+
 addClearButton(vej1Input, vej1List);
 addClearButton(vej2Input, vej2List);
 // Clear-knapper til rute-felter
