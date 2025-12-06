@@ -85,7 +85,8 @@
   - Tjek at når Strandpost vælges, at der så zommes til Strandpost og pop-up vindue vises samt marker placeres.
   - Tjek at pop-up vinduet forsvinder når der trykkes på kryds i pop-up vindue eller i search feltet.
   - Tjek kopiformatet på Eva.Net (Oksenbjergevej,28,7323) og Notes (Oksenbjergevej 28, 7323 Give) er korrekte
-  - Tjek at pop-up vinduet og marker forsvinder når man trykker på krydset i vinduet og/eller kryds i search feltet.
+  - Tjek at pop-up vinduet og marker forsvinder når man trykker på krydset i vinduet og/eller kryds i search feltet
+  - Tjek at autocomplete fungerer allerede ved første tryk
 
 8. Koordinat funktionen
 * Klik på kortet
