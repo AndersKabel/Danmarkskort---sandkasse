@@ -1325,15 +1325,43 @@ var vej1List     = document.getElementById("results-vej1");
 var vej2List     = document.getElementById("results-vej2");
 
 // Checkbox til at styre udenlandsk søgning
-var foreignSearchToggle = document.getElementById("enableForeignSearch") || document.getElementById("foreignSearchToggle") || document.getElementById("foreignSearch");
+var foreignSearchToggle =
+  document.getElementById("enableForeignSearch") ||
+  document.getElementById("foreignSearchToggle") ||
+  document.getElementById("foreignSearch");
+
 var orsGeocodeQuotaSpan = document.getElementById("orsGeocodeQuota");
+
+// NYT: lille infoboks når "Udland" vælges
+var foreignInfoBox   = document.getElementById("foreignInfoBox");
+var foreignInfoClose = document.getElementById("foreignInfoClose");
+
+// Initiel visning af quota-tekst og infoboks
 if (orsGeocodeQuotaSpan) {
   orsGeocodeQuotaSpan.style.display =
     (foreignSearchToggle && foreignSearchToggle.checked) ? "inline" : "none";
 }
-if (foreignSearchToggle && orsGeocodeQuotaSpan) {
+if (foreignInfoBox) {
+  foreignInfoBox.style.display =
+    (foreignSearchToggle && foreignSearchToggle.checked) ? "block" : "none";
+}
+
+// Når man slår "Udland" til/fra
+if (foreignSearchToggle) {
   foreignSearchToggle.addEventListener("change", function () {
-    orsGeocodeQuotaSpan.style.display = this.checked ? "inline" : "none";
+    if (orsGeocodeQuotaSpan) {
+      orsGeocodeQuotaSpan.style.display = this.checked ? "inline" : "none";
+    }
+    if (foreignInfoBox) {
+      foreignInfoBox.style.display = this.checked ? "block" : "none";
+    }
+  });
+}
+
+// Luk-kryds i infoboksen
+if (foreignInfoClose && foreignInfoBox) {
+  foreignInfoClose.addEventListener("click", function () {
+    foreignInfoBox.style.display = "none";
   });
 }
 
