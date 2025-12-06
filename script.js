@@ -556,16 +556,39 @@ function convertToWGS84(x, y) {
   console.log("convertToWGS84 output:", result);
   return [result[1], result[0]];
 }
-
 /***************************************************
  * Custom Places
  ***************************************************/
-var customPlaces = [
-  {
-    navn: "Tellerup Bjerge",
-    coords: [55.38627, 9.92760]
-  }
-];
+var customPlaces = [];
+
+// Hent custom places fra ekstern fil "CustomPlaces"
+// Første objekt i filen kan bruges som skabelon
+// og markeres med "template": true – det bliver filtreret fra.
+fetch("CustomPlaces")
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(data) {
+    if (!Array.isArray(data)) {
+      console.error("CustomPlaces indeholder ikke et array:", data);
+      return;
+    }
+    customPlaces = data
+      .filter(function(p) {
+        return !p.template && !p.isTemplate;
+      })
+      .map(function(p) {
+        // Sørg for at coords stadig findes, så eksisterende logik virker
+        if (typeof p.lat === "number" && typeof p.lon === "number") {
+          p.coords = [p.lat, p.lon];
+        }
+        return p;
+      });
+    console.log("Custom places indlæst:", customPlaces);
+  })
+  .catch(function(err) {
+    console.error("Fejl ved hentning af CustomPlaces:", err);
+  });
 
 /***************************************************
  * Hjælpefunktion til at kopiere tekst til clipboard
