@@ -2149,15 +2149,25 @@ function doSearch(query, listElement) {
   let strandPromiseBase = (map.hasLayer(redningsnrLayer) && strandposterReady)
     ? doSearchStrandposter(query)
     : Promise.resolve([]);
-
+  
   // Evt. egne special-steder
+  let lowerQuery = query.toLowerCase();
   let customResults = customPlaces
-    .filter(p => p.navn.toLowerCase().includes(query.toLowerCase()))
-    .map(p => ({
-      type: "custom",
-      navn: p.navn,
-      coords: p.coords
-    }));
+    .filter(function(p) {
+      let navnMatch     = p.navn && p.navn.toLowerCase().includes(lowerQuery);
+      let adresseMatch  = p.adresse && p.adresse.toLowerCase().includes(lowerQuery);
+      let kortnavnMatch = p.kortnavn && p.kortnavn.toLowerCase().includes(lowerQuery);
+      return navnMatch || adresseMatch || kortnavnMatch;
+    })
+    .map(function(p) {
+      return {
+        type: "custom",
+        navn: p.navn || "",
+        adresse: p.adresse || "",
+        coords: p.coords,
+        data: p
+      };
+    });
 
   // Udlands-tilstand styres af checkboxen (Udland)
   const foreignToggleEl =
