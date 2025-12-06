@@ -1,1 +1,54 @@
+[
+  {
+    "id": "SKABELON_EKSEMPEL",
+    "kategori": "",
+    "navn": "",
+    "lat": 0.0,
+    "lon": 0.0,
+    "adresse": "",
+    "retning": "",
+    "ruteNr": "",
+    "type": "",
+    "supplAdresse": "",
+    "vejkategori": "",
+    "antalSpor": "",
+    "forgrening": "",
+    "nodspor": "",
+    "hverdage": "",
+    "oevrigTid": "",
+    "kmPael": "",
+    "admNummer": "",
+    "template": true
+  },
+
+  {
+    "id": "solhjulet",
+    "kategori": "sted",
+    "navn": "Solhjulet",
+    "lat": 55.863062,
+    "lon": 9.253179,
+    "adresse": "Vejlevej 210, 7323 Give"
+  },
+
+  {
+    "id": "mtv_m11_v_afk_18_holbaek_oe",
+    "kategori": "motorvej",
+    "navn": "MTV M11 V AFK 18 HOLBÆK Ø",
+    "lat": 55.676830,
+    "lon": 11.740791,
+    "adresse": "",
+    "retning": "V",
+    "ruteNr": 21,
+    "type": "Motorvej",
+    "supplAdresse": "1: 112 - 2: 128 - 3: 110",
+    "vejkategori": "B",
+    "antalSpor": 1,
+    "forgrening": 3,
+    "nodspor": "NEJ",
+    "hverdage": "6-18: 40 min",
+    "oevrigTid": "40 min",
+    "kmPael": 59,
+    "admNummer": 11
+  }
+]
 
