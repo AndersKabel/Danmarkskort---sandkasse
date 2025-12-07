@@ -1411,51 +1411,70 @@ async function updateInfoBox(data, lat, lon) {
   if (vej1List)    vej1List.innerHTML    = "";
   if (vej2List)    vej2List.innerHTML    = "";
 
-  // Statsvej-data
-  let statsvejData = await checkForStatsvej(lat, lon);
+  // Statsvej-data – først forsøg via lokale "Statsveje", derefter fallback til VD
   const statsvejInfoEl = document.getElementById("statsvejInfo");
+  let handledByLocalStatsvej = false;
 
-  const admNr       = statsvejData?.ADM_NR       ?? statsvejData?.adm_nr       ?? null;
-  const forgrening  = statsvejData?.FORGRENING   ?? statsvejData?.forgrening   ?? null;
-  const betegnelse  = statsvejData?.BETEGNELSE   ?? statsvejData?.betegnelse   ?? null;
-  const bestyrer    = statsvejData?.BESTYRER     ?? statsvejData?.bestyrer     ?? null;
-  const vejtype     = statsvejData?.VEJTYPE      ?? statsvejData?.vejtype      ?? null;
-  const beskrivelse = statsvejData?.BESKRIVELSE  ?? statsvejData?.beskrivelse  ?? null;
-  const vejstatus   = statsvejData?.VEJSTATUS    ?? statsvejData?.vejstatus    ?? statsvejData?.VEJ_STATUS ?? statsvejData?.status ?? null;
-  const vejmynd     = statsvejData?.VEJMYNDIGHED ?? statsvejData?.vejmyndighed ?? statsvejData?.VEJMYND     ?? statsvejData?.vejmynd ?? null;
-  
-  const hasStatsvej = admNr != null || forgrening != null || (betegnelse && String(betegnelse).trim() !== "") || (vejtype && String(vejtype).trim() !== "");
-  const showStatsBox = hasStatsvej || vejstatus || vejmynd;
+  // Prøv at finde nærmeste statsvej-punkter fra lokal fil
+  const nearbyStats = findNearbyStatsveje(lat, lon);
 
-  if (showStatsBox) {
-    let html = "";
-    if (hasStatsvej) {
-      html += `<strong>Administrativt nummer:</strong> ${admNr || "Ukendt"}<br>`;
-      html += `<strong>Forgrening:</strong> ${forgrening || "Ukendt"}<br>`;
-      html += `<strong>Vejnavn:</strong> ${betegnelse || "Ukendt"}<br>`;
-      html += `<strong>Bestyrer:</strong> ${bestyrer || "Ukendt"}<br>`;
-      html += `<strong>Vejtype:</strong> ${vejtype || "Ukendt"}`;
-    }
-
-    if (vejstatus) {
-      html += `<br><strong>Vejstatus:</strong> ${vejstatus}`;
-    }
-    if (vejmynd) {
-      html += `<br><strong>Vejmyndighed:</strong> ${vejmynd}`;
-    }
-    statsvejInfoEl.innerHTML = html;
-
-    if (hasStatsvej) {
-      const kmText = await getKmAtPoint(lat, lon);
-      if (kmText) {
-        statsvejInfoEl.innerHTML += `<br><strong>Km:</strong> ${kmText}`;
-      }
-    }
-    document.getElementById("statsvejInfoBox").style.display = "block";
-  } else {
-    statsvejInfoEl.innerHTML = "";
-    document.getElementById("statsvejInfoBox").style.display = "none";
+  if (nearbyStats && nearbyStats.length > 1) {
+    // Flere kandidater tæt på – lad brugeren vælge
+    showStatsvejSelection(nearbyStats);
+    handledByLocalStatsvej = true;
+  } else if (nearbyStats && nearbyStats.length === 1) {
+    // Præcis ét lokalt punkt – vis det direkte
+    renderStatsvejFromStatsvejsObj(nearbyStats[0].place);
+    handledByLocalStatsvej = true;
   }
+
+  if (!handledByLocalStatsvej) {
+    // Ingen lokale statsveje fundet – brug VD som fallback
+    let statsvejData = await checkForStatsvej(lat, lon);
+
+    const admNr       = statsvejData?.ADM_NR       ?? statsvejData?.adm_nr       ?? null;
+    const forgrening  = statsvejData?.FORGRENING   ?? statsvejData?.forgrening   ?? null;
+    const betegnelse  = statsvejData?.BETEGNELSE   ?? statsvejData?.betegnelse   ?? null;
+    const bestyrer    = statsvejData?.BESTYRER     ?? statsvejData?.bestyrer     ?? null;
+    const vejtype     = statsvejData?.VEJTYPE      ?? statsvejData?.vejtype      ?? null;
+    const beskrivelse = statsvejData?.BESKRIVELSE  ?? statsvejData?.beskrivelse  ?? null;
+    const vejstatus   = statsvejData?.VEJSTATUS    ?? statsvejData?.vejstatus    ?? statsvejData?.VEJ_STATUS ?? statsvejData?.status ?? null;
+    const vejmynd     = statsvejData?.VEJMYNDIGHED ?? statsvejData?.vejmyndighed ?? statsvejData?.VEJMYND     ?? statsvejData?.vejmynd ?? null;
+  
+    const hasStatsvej = admNr != null || forgrening != null || (betegnelse && String(betegnelse).trim() !== "") || (vejtype && String(vejtype).trim() !== "");
+    const showStatsBox = hasStatsvej || vejstatus || vejmynd;
+
+    if (showStatsBox) {
+      let html = "";
+      if (hasStatsvej) {
+        html += `<strong>Administrativt nummer:</strong> ${admNr || "Ukendt"}<br>`;
+        html += `<strong>Forgrening:</strong> ${forgrening || "Ukendt"}<br>`;
+        html += `<strong>Vejnavn:</strong> ${betegnelse || "Ukendt"}<br>`;
+        html += `<strong>Bestyrer:</strong> ${bestyrer || "Ukendt"}<br>`;
+        html += `<strong>Vejtype:</strong> ${vejtype || "Ukendt"}`;
+      }
+
+      if (vejstatus) {
+        html += `<br><strong>Vejstatus:</strong> ${vejstatus}`;
+      }
+      if (vejmynd) {
+        html += `<br><strong>Vejmyndighed:</strong> ${vejmynd}`;
+      }
+      statsvejInfoEl.innerHTML = html;
+
+      if (hasStatsvej) {
+        const kmText = await getKmAtPoint(lat, lon);
+        if (kmText) {
+          statsvejInfoEl.innerHTML += `<br><strong>Km:</strong> ${kmText}`;
+        }
+      }
+      document.getElementById("statsvejInfoBox").style.display = "block";
+    } else {
+      statsvejInfoEl.innerHTML = "";
+      document.getElementById("statsvejInfoBox").style.display = "none";
+    }
+  }
+
   document.getElementById("infoBox").style.display = "block";
   
   // Kommuneinfo
