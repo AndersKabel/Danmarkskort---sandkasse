@@ -1,1 +1,43 @@
+[
+  {
+    "Id": "SKABELON_EKSEMPEL",
+    "Navn": "",
+    "Lat": 0.0,
+    "Lon": 0.0,
+    "Adresse": "",
+    "Retning": "",
+    "Rute Nr": "",
+    "Type": "",
+    "SupplAdresse": "",
+    "Vejkategori": "",
+    "Antal Spor": "",
+    "Forgrening": "",
+    "Nødspor": "",
+    "Hverdage 6-18": "",
+    "Øvrig tid": "",
+    "KM Pæl": "",
+    "ADM Nummer": "",
+    "Template": true
+  },
 
+  
+  {
+    "Id": "mtv_m11_v_afk_18_holbaek_oe",
+    "Navn": "MTV M11 V AFK 18 HOLBÆK Ø",
+    "Lat": 55.676830,
+    "Lon": 11.740791,
+    "Adresse": "",
+    "Retning": "V",
+    "Rute Nr": 21,
+    "Type": "Motorvej",
+    "SupplAdresse": "1: 112 - 2: 128 - 3: 110",
+    "Vejkategori": "B",
+    "AntalSpor": 1,
+    "Forgrening": 3,
+    "Nødspor": "NEJ",
+    "Hverdage 6-18": "40 min",
+    "Øvrig tid": "40 min",
+    "KM Pæl": 59,
+    "ADM Nummer": 11
+  }
+]
