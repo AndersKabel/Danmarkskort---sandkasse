@@ -845,9 +845,12 @@ function getSortPriority(item, query) {
     text = item.navn || "";
   } else if (item.type === "custom") {
     text = item.navn || "";
+  } else if (item.type === "statsvej") {
+    text = item.navn || "";
   } else if (item.type === "ors_foreign") {
     text = item.label || "";
   }
+
   const lowerText = text.toLowerCase();
   const lowerQuery = query.toLowerCase();
 
