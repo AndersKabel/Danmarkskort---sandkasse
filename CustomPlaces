@@ -1,12 +1,12 @@
 [
   {
-    "id": "SKABELON_EKSEMPEL",
-    "kategori": "",
-    "navn": "",
-    "lat": 0.0,
-    "lon": 0.0,
-    "adresse": "",
-    "template": true
+    "Id": "SKABELON_EKSEMPEL",
+    "Kategori": "",
+    "Navn": "",
+    "Lat": 0.0,
+    "Lon": 0.0,
+    "Adresse": "",
+    "Template": true
   },
 
   {
