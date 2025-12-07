@@ -589,6 +589,209 @@ fetch("CustomPlaces")
   .catch(function(err) {
     console.error("Fejl ved hentning af CustomPlaces:", err);
   });
+/***************************************************
+ * Statsveje (punkter med motorvejs-/statsvejsdata)
+ ***************************************************/
+var statsveje = [];
+
+// Hent statsveje fra ekstern fil "Statsveje"
+// Strukturen forventes ca. som:
+// [
+//   {
+//     "navn": "MTV M11 V AFK 18 HOLBÆK Ø",
+//     "lat": 55.676830,
+//     "lon": 11.740791,
+//     "adresse": "Toftebanke 18, 4390 Vipperød",
+//     "retning": "V",
+//     "ruteNr": "21",
+//     "type": "Motorvej",
+//     "supplAdresse": "1: 112 - 2: 128 - 3: 110",
+//     "vejkategori": "B",
+//     "antalSpor": "1",
+//     "forgrening": "3",
+//     "noedspor": "NEJ",
+//     "responsHverdage": "40 min",
+//     "responsOevrig": "40 min",
+//     "kmPael": "59",
+//     "admNummer": "11"
+//   },
+//   ...
+// ]
+fetch("Statsveje")
+  .then(function(response) {
+    return response.json();
+  })
+  .then(function(data) {
+    if (!Array.isArray(data)) {
+      console.error("Statsveje indeholder ikke et array:", data);
+      return;
+    }
+    statsveje = data
+      .filter(function(p) {
+        return !p.template && !p.isTemplate;
+      })
+      .map(function(p) {
+        if (typeof p.lat === "number" && typeof p.lon === "number") {
+          p.coords = [p.lat, p.lon];
+        }
+        return p;
+      });
+    console.log("Statsveje indlæst:", statsveje);
+  })
+  .catch(function(err) {
+    console.error("Fejl ved hentning af Statsveje:", err);
+  });
+
+/***************************************************
+ * Statsveje – hjælpere til søgning og visning
+ ***************************************************/
+function findNearbyStatsveje(lat, lon) {
+  if (!statsveje || statsveje.length === 0) {
+    return [];
+  }
+  if (typeof map === "undefined") {
+    return [];
+  }
+
+  var clickLatLng = L.latLng(lat, lon);
+  var steps = [50, 100, 200, 500]; // meter
+
+  var withDistances = statsveje
+    .map(function(p) {
+      var pLat;
+      var pLon;
+      if (typeof p.lat === "number" && typeof p.lon === "number") {
+        pLat = p.lat;
+        pLon = p.lon;
+      } else if (Array.isArray(p.coords) && p.coords.length === 2) {
+        pLat = p.coords[0];
+        pLon = p.coords[1];
+      } else {
+        return null;
+      }
+      var dist = map.distance(clickLatLng, L.latLng(pLat, pLon));
+      return {
+        place: p,
+        dist: dist
+      };
+    })
+    .filter(function(entry) {
+      return entry !== null;
+    })
+    .sort(function(a, b) {
+      return a.dist - b.dist;
+    });
+
+  if (withDistances.length === 0) {
+    return [];
+  }
+
+  // Gå gennem radius-trin, og returnér de(t) nærmeste for første trin med resultater
+  for (var i = 0; i < steps.length; i++) {
+    var r = steps[i];
+    var within = withDistances.filter(function(entry) {
+      return entry.dist <= r;
+    });
+    if (within.length > 0) {
+      var bestDist = within[0].dist;
+      var best = within.filter(function(entry) {
+        return Math.abs(entry.dist - bestDist) <= 5;
+      });
+      return best;
+    }
+  }
+
+  return [];
+}
+
+function renderStatsvejFromStatsvejsObj(statsObj) {
+  var statsvejInfoEl = document.getElementById("statsvejInfo");
+  var statsvejBox = document.getElementById("statsvejInfoBox");
+  if (!statsvejInfoEl || !statsvejBox || !statsObj) return;
+
+  var navn        = statsObj.navn        || "";
+  var admNummer   = statsObj.admNummer   || statsObj.adm_nr || "";
+  var forgrening  = statsObj.forgrening  || "";
+  var ruteNr      = statsObj.ruteNr      || statsObj.rute_nr || "";
+  var type        = statsObj.type        || statsObj.vejtype || "";
+  var supplAdr    = statsObj.supplAdresse || statsObj.suppl_adresse || "";
+  var vejkategori = statsObj.vejkategori || "";
+  var antalSpor   = statsObj.antalSpor   || "";
+  var noedspor    = statsObj.noedspor    || statsObj.nødspor || statsObj.nodspor || "";
+  var respHverd   = statsObj.responsHverdage || statsObj.respons_hverdage || statsObj.hverdage || "";
+  var respOevrig  = statsObj.responsOevrig   || statsObj.respons_oevrig   || statsObj.oevrigTid || statsObj.ovrig_tid || "";
+  var kmPael      = statsObj.kmPael      || statsObj.km_pæl || statsObj.km || "";
+
+  var html = "";
+
+  if (navn) {
+    html += "<strong>" + navn + "</strong><br>";
+  }
+  if (admNummer) {
+    html += "<strong>Administrativt nummer:</strong> " + admNummer + "<br>";
+  }
+  if (forgrening) {
+    html += "<strong>Forgrening:</strong> " + forgrening + "<br>";
+  }
+  if (ruteNr) {
+    html += "<strong>Rute nr.:</strong> " + ruteNr + "<br>";
+  }
+  if (type) {
+    html += "<strong>Vejtype:</strong> " + type + "<br>";
+  }
+  if (supplAdr) {
+    html += "<strong>Suppl. adresse:</strong> " + supplAdr + "<br>";
+  }
+  if (vejkategori) {
+    html += "<strong>Vejkategori:</strong> " + vejkategori + "<br>";
+  }
+  if (antalSpor) {
+    html += "<strong>Antal spor:</strong> " + antalSpor + "<br>";
+  }
+  if (noedspor) {
+    html += "<strong>Nødspor:</strong> " + noedspor + "<br>";
+  }
+  if (respHverd) {
+    html += "<strong>Respons hverdage 6-18:</strong> " + respHverd + "<br>";
+  }
+  if (respOevrig) {
+    html += "<strong>Respons øvrig tid:</strong> " + respOevrig + "<br>";
+  }
+  if (kmPael) {
+    html += "<strong>Km:</strong> " + kmPael + "<br>";
+  }
+
+  statsvejInfoEl.innerHTML = html;
+  statsvejBox.style.display = html ? "block" : "none";
+}
+
+function showStatsvejSelection(candidates) {
+  var statsvejInfoEl = document.getElementById("statsvejInfo");
+  var statsvejBox = document.getElementById("statsvejInfoBox");
+  if (!statsvejInfoEl || !statsvejBox) return;
+
+  statsvejInfoEl.innerHTML = "<strong>Flere statsveje fundet her – vælg sted:</strong><br>";
+
+  var ul = document.createElement("ul");
+  ul.style.paddingLeft = "20px";
+
+  candidates.forEach(function(entry, index) {
+    var p = entry.place;
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#";
+    a.textContent = p.navn || ("Statsvej " + (index + 1));
+    a.addEventListener("click", function(e) {
+      e.preventDefault();
+      renderStatsvejFromStatsvejsObj(p);
+    });
+    li.appendChild(a);
+    ul.appendChild(li);
+  });
+
+  statsvejInfoEl.appendChild(ul);
+  statsvejBox.style.display = "block";
+}
 
 /***************************************************
  * Hjælpefunktion til at kopiere tekst til clipboard
