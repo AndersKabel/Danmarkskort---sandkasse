@@ -2362,7 +2362,7 @@ function quickStrandSearch(query) {
 
 /***************************************************
  * doSearch => kombinerer adresser, stednavne, specialsteder,
- * navngivne veje, strandposter og udenlandske ORS-adresser
+ * navngivne veje, strandposter, statsveje og ORS-adresser
  ***************************************************/
 function doSearch(query, listElement) {
   let addrUrl = `https://api.dataforsyningen.dk/adgangsadresser/autocomplete?q=${encodeURIComponent(query)}&per_side=50`;
@@ -2387,6 +2387,25 @@ function doSearch(query, listElement) {
     .map(function(p) {
       return {
         type: "custom",
+        navn: p.navn || "",
+        adresse: p.adresse || "",
+        coords: p.coords,
+        data: p
+      };
+    });
+
+  // Statsveje – punkter med mere detaljeret motorvejs-info
+  let statsvejsResults = statsveje
+    .filter(function(p) {
+      let navnMatch    = p.navn && p.navn.toLowerCase().includes(lowerQuery);
+      let adrMatch     = p.adresse && p.adresse.toLowerCase().includes(lowerQuery);
+      let forkortMatch = p.adresseForkortelse && p.adresseForkortelse.toLowerCase().includes(lowerQuery);
+      let ruteMatch    = p.ruteNr && String(p.ruteNr).toLowerCase().includes(lowerQuery);
+      return navnMatch || adrMatch || forkortMatch || ruteMatch;
+    })
+    .map(function(p) {
+      return {
+        type: "statsvej",
         navn: p.navn || "",
         adresse: p.adresse || "",
         coords: p.coords,
@@ -2419,7 +2438,7 @@ function doSearch(query, listElement) {
     strandPromise = Promise.resolve([]);
     orsPromise    = geocodeORSForSearch(query);
   } else {
-    // Normal tilstand: kun danske kilder, ingen ORS
+    // Normal tilstand: danske kilder + lokale data
     addrPromise = fetch(addrUrl)
       .then(r => r.json())
       .catch(err => { console.error("Adresser fejl:", err); return []; });
@@ -2497,21 +2516,34 @@ function doSearch(query, listElement) {
         ...orsResults
       ];
     } else {
-      // Normal tilstand: danske kilder + evt. egne steder
+      // Normal tilstand: danske kilder + egne steder + statsveje
       combined = [
         ...addrResults,
         ...stedResults,
         ...roadResults,
         ...(strandData || []),
         ...customResults,
+        ...statsvejsResults,
         ...orsResults
       ];
     }
 
-    // Sortering
+    // Sortering – navne-typer (stednavn, navngiven vej, custom, statsvej, ORS) først
     combined.sort((a, b) => {
-      const aIsName = (a.type === "stednavn" || a.type === "navngivenvej" || a.type === "custom" || a.type === "ors_foreign");
-      const bIsName = (b.type === "stednavn" || b.type === "navngivenvej" || b.type === "custom" || b.type === "ors_foreign");
+      const aIsName = (
+        a.type === "stednavn" ||
+        a.type === "navngivenvej" ||
+        a.type === "custom" ||
+        a.type === "statsvej" ||
+        a.type === "ors_foreign"
+      );
+      const bIsName = (
+        b.type === "stednavn" ||
+        b.type === "navngivenvej" ||
+        b.type === "custom" ||
+        b.type === "statsvej" ||
+        b.type === "ors_foreign"
+      );
       if (aIsName && !bIsName) return -1;
       if (!aIsName && bIsName) return 1;
       return getSortPriority(a, query) - getSortPriority(b, query);
@@ -2520,7 +2552,7 @@ function doSearch(query, listElement) {
     // Byg liste-elementer
     combined.forEach(obj => {
       let li = document.createElement("li");
-            if (obj.type === "strandpost") {
+      if (obj.type === "strandpost") {
         li.innerHTML = `🛟 ${obj.tekst}`;
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
@@ -2531,6 +2563,9 @@ function doSearch(query, listElement) {
       } else if (obj.type === "custom") {
         let extra = obj.adresse ? " – " + obj.adresse : "";
         li.innerHTML = `⭐ ${obj.navn}${extra}`;
+      } else if (obj.type === "statsvej") {
+        let extraStats = obj.adresse ? " – " + obj.adresse : "";
+        li.innerHTML = `🛣️ ${obj.navn}${extraStats}`;
       } else if (obj.type === "ors_foreign") {
         li.innerHTML = `🌍 ${obj.label}`;
       }
@@ -2569,10 +2604,13 @@ function doSearch(query, listElement) {
           placeMarkerAndZoom(coordsArr, obj.navn);
           listElement.innerHTML = "";
           listElement.style.display = "none"; 
-                } else if (obj.type === "strandpost") {
+        } else if (obj.type === "strandpost") {
           handleStrandpostClick(obj, listElement);
         } else if (obj.type === "custom") {
-          let [lat, lon] = obj.coords;
+          let coordsCustom = obj.coords;
+          if (!coordsCustom || coordsCustom.length < 2) return;
+          let lat = coordsCustom[0];
+          let lon = coordsCustom[1];
           setCoordinateBox(lat, lon);
           placeMarkerAndZoom([lat, lon], obj.navn);
           let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
@@ -2582,6 +2620,22 @@ function doSearch(query, listElement) {
               updateInfoBox(revData, lat, lon);
             })
             .catch(err => console.error("Reverse geocoding fejl for specialsted:", err));
+          listElement.innerHTML = "";
+          listElement.style.display = "none";
+        } else if (obj.type === "statsvej") {
+          let coordsStats = obj.coords;
+          if (!coordsStats || coordsStats.length < 2) return;
+          let lat = coordsStats[0];
+          let lon = coordsStats[1];
+          setCoordinateBox(lat, lon);
+          placeMarkerAndZoom([lat, lon], obj.navn);
+          let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+          fetch(revUrl)
+            .then(r => r.json())
+            .then(revData => {
+              updateInfoBox(revData, lat, lon);
+            })
+            .catch(err => console.error("Reverse geocoding fejl for statsvej:", err));
           listElement.innerHTML = "";
           listElement.style.display = "none";
         } else if (obj.type === "navngivenvej") {
