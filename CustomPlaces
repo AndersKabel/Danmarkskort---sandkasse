@@ -6,18 +6,6 @@
     "lat": 0.0,
     "lon": 0.0,
     "adresse": "",
-    "retning": "",
-    "ruteNr": "",
-    "type": "",
-    "supplAdresse": "",
-    "vejkategori": "",
-    "antalSpor": "",
-    "forgrening": "",
-    "nodspor": "",
-    "hverdage": "",
-    "oevrigTid": "",
-    "kmPael": "",
-    "admNummer": "",
     "template": true
   },
 
