@@ -17,7 +17,6 @@
     "responsOevrig": "",
     "kmPael": "",
     "admNummer": "",
-    "bemaerkninger":"",
     "template": true
   },
 
@@ -38,7 +37,6 @@
     "responsHverdage": "40 min",
     "responsOevrig": "40 min",
     "kmPael": 59,
-    "admNummer": 11,
-    "bemaerkninger": Test
+    "admNummer": 11
   }
 ]
