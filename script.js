@@ -1367,7 +1367,14 @@ function createSelectionMarker(lat, lon) {
     const m = L.marker([lat, lon]);
     keepMarkersLayer.addLayer(m);
     currentMarker = m;
+
+    // Attach keep behaviors (right click delete + click reopen)
+    attachKeepMarkerBehaviors(currentMarker);
   }
+
+  // Når vi opretter en ny markør, gør den til aktiv for note-feltet
+  setActiveInfoMarker(currentMarker);
+
   return currentMarker;
 }
 
