@@ -2460,14 +2460,20 @@ function handleStrandpostClick(obj, listElement) {
         `).openPopup();
 
         marker.on("popupclose", function () {
-          map.removeLayer(marker);
-          currentMarker = null;
-          document.getElementById("infoBox").style.display = "none";
-          document.getElementById("statsvejInfoBox").style.display = "none";
-          resetCoordinateBox();
-          resultsList.innerHTML = "";
-          resultsList.style.display = "none";
-        });
+  // I keep-mode skal markøren blive stående (kun slettes via højreklik eller layer off)
+  if (!keepMarkersEnabled) {
+    map.removeLayer(marker);
+    currentMarker = null;
+    setActiveInfoMarker(null);
+  }
+
+  document.getElementById("infoBox").style.display = "none";
+  document.getElementById("statsvejInfoBox").style.display = "none";
+  document.getElementById("kommuneOverlay").style.display = "none";
+  resetCoordinateBox();
+  resultsList.innerHTML = "";
+  resultsList.style.display = "none";
+});
       }
     })
     .catch(err => {
