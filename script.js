@@ -1276,12 +1276,15 @@ map.on('overlayadd', function(e) {
     keepMarkersEnabled = true;
 
     // Hvis der allerede findes en aktuel markør, flyttes den over i laget
-    if (currentMarker) {
-      if (map.hasLayer(currentMarker)) {
-        map.removeLayer(currentMarker);
-      }
-      keepMarkersLayer.addLayer(currentMarker);
+      if (currentMarker) {
+    if (map.hasLayer(currentMarker)) {
+      map.removeLayer(currentMarker);
     }
+    keepMarkersLayer.addLayer(currentMarker);
+
+    // Sørg for højreklik-slet / klik-genåbn også på den markør
+    attachKeepMarkerBehaviors(currentMarker);
+  }
   }
 });
 
