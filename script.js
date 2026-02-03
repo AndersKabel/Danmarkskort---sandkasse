@@ -1498,6 +1498,15 @@ async function updateInfoBox(data, lat, lon) {
   
   streetviewLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}`;
   addressEl.textContent = adresseStr;
+  // Gem data på den aktuelle markør, så den kan vises igen senere (og hover kan vise adresse)
+  if (currentMarker) {
+    if (!currentMarker._meta) currentMarker._meta = {};
+    currentMarker._meta.dkReverseData = data;     // gem reverse-data
+    currentMarker._meta.foreignFeature = null;    // ryd evt. udlandsdata
+    setMarkerHoverAddress(currentMarker, adresseStr);
+    attachKeepMarkerBehaviors(currentMarker);
+    setActiveInfoMarker(currentMarker);
+  }
 
   extraInfoEl.innerHTML = "";
   extraInfoEl.insertAdjacentHTML(
