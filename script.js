@@ -1677,6 +1677,15 @@ function updateInfoBoxForeign(feature, lat, lon) {
 
   streetviewLink.href = `https://www.google.com/maps?q=&layer=c&cbll=${lat},${lon}`;
   addressEl.textContent = label;
+  // Gem udlands-feature på markøren + hover-tooltip + note-binding
+  if (currentMarker) {
+    if (!currentMarker._meta) currentMarker._meta = {};
+    currentMarker._meta.foreignFeature = feature;
+    currentMarker._meta.dkReverseData = null;
+    setMarkerHoverAddress(currentMarker, label);
+    attachKeepMarkerBehaviors(currentMarker);
+    setActiveInfoMarker(currentMarker);
+  }
 
   extraInfoEl.innerHTML = `
     <a href="#" title="Kopier til Eva.net" onclick="(function(el){ el.style.color='red'; copyToClipboard('${evaFormat}'); showCopyPopup('Kopieret'); setTimeout(function(){ el.style.color=''; },1000); })(this); return false;">Eva.Net</a>
