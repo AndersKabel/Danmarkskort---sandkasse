@@ -1040,6 +1040,121 @@ var keepMarkersEnabled = false;
 
 // Global reference til "seneste" markør (bruges bl.a. til radius)
 var currentMarker;
+// Aktiv markør som info-boksen (og note-feltet) aktuelt viser for
+var activeInfoMarker = null;
+
+/**
+ * Vis/skjul og bind note-feltet til en given markør
+ */
+function setupMarkerNoteUI(marker) {
+  const wrap = document.getElementById("markerNoteWrapper");
+  const ta = document.getElementById("markerNote");
+  if (!wrap || !ta) return;
+
+  if (!marker) {
+    wrap.style.display = "none";
+    ta.value = "";
+    ta.oninput = null;
+    return;
+  }
+
+  wrap.style.display = "block";
+
+  if (!marker._meta) marker._meta = {};
+  ta.value = marker._meta.note || "";
+
+  ta.oninput = function () {
+    if (!marker._meta) marker._meta = {};
+    marker._meta.note = ta.value;
+  };
+}
+
+function setActiveInfoMarker(marker) {
+  activeInfoMarker = marker || null;
+  setupMarkerNoteUI(activeInfoMarker);
+}
+
+/**
+ * Sæt/Opdatér tooltip med adresse for hover
+ */
+function setMarkerHoverAddress(marker, addressText) {
+  if (!marker) return;
+  if (!marker._meta) marker._meta = {};
+  marker._meta.addressText = addressText || "";
+
+  // Tooltip kun hvis vi har noget tekst
+  if (!marker._meta.addressText) return;
+
+  if (!marker._meta._tooltipBound) {
+    marker.bindTooltip(marker._meta.addressText, {
+      sticky: true,
+      direction: "top"
+    });
+    marker._meta._tooltipBound = true;
+  } else {
+    // Opdater indhold hvis tooltip allerede findes
+    try {
+      marker.setTooltipContent(marker._meta.addressText);
+    } catch (e) {
+      // Fallback: re-bind hvis Leaflet skulle drille
+      marker.unbindTooltip();
+      marker.bindTooltip(marker._meta.addressText, {
+        sticky: true,
+        direction: "top"
+      });
+    }
+  }
+}
+
+/**
+ * Tilføj keep-markør-adfærd:
+ * - højreklik (contextmenu) for at slette kun den ene markør (kun når keepMarkersEnabled)
+ * - klik for at genåbne infoboks med gemte data (hvis muligt)
+ */
+function attachKeepMarkerBehaviors(marker) {
+  if (!marker) return;
+  if (marker._keepBehaviorsAttached) return;
+  marker._keepBehaviorsAttached = true;
+
+  marker.on("contextmenu", function () {
+    if (!keepMarkersEnabled) return;
+
+    const ok = confirm("Slet denne markør?");
+    if (!ok) return;
+
+    // Fjern kun denne markør
+    if (keepMarkersLayer && keepMarkersLayer.hasLayer(marker)) {
+      keepMarkersLayer.removeLayer(marker);
+    } else if (map && map.hasLayer(marker)) {
+      map.removeLayer(marker);
+    }
+
+    if (currentMarker === marker) currentMarker = null;
+
+    if (activeInfoMarker === marker) {
+      document.getElementById("infoBox").style.display = "none";
+      document.getElementById("statsvejInfoBox").style.display = "none";
+      document.getElementById("kommuneOverlay").style.display = "none";
+      resetCoordinateBox();
+      setActiveInfoMarker(null);
+    }
+  });
+
+  marker.on("click", function () {
+    // Klik på en "fastlåst" markør skal kunne vise infoboks igen
+    const latlng = marker.getLatLng();
+    if (marker._meta && marker._meta.dkReverseData) {
+      updateInfoBox(marker._meta.dkReverseData, latlng.lat, latlng.lng);
+      setActiveInfoMarker(marker);
+    } else if (marker._meta && marker._meta.foreignFeature) {
+      updateInfoBoxForeign(marker._meta.foreignFeature, latlng.lat, latlng.lng);
+      setActiveInfoMarker(marker);
+    } else {
+      // Hvis vi ikke har gemt data, så gør vi kun note-feltet aktivt
+      setActiveInfoMarker(marker);
+    }
+  });
+}
 
 var originalBorderCoords = [];
 fetch("dansk-tysk-grænse.geojson")
