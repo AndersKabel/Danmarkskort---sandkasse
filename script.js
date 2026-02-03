@@ -1295,6 +1295,8 @@ map.on('overlayremove', function(e) {
     keepMarkersLayer.clearLayers();
     if (currentMarker && map.hasLayer(currentMarker)) {
       map.removeLayer(currentMarker);
+          // Hvis vi havde en aktiv fastlåst markør i infoboksen, nulstil note UI
+    setActiveInfoMarker(null);
     }
     currentMarker = null;
   }
