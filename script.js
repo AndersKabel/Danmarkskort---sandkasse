@@ -2451,6 +2451,12 @@ function handleStrandpostClick(obj, listElement) {
       const notesFormat = `${vejnavn} ${husnr}, ${postnr} ${postnrnavn}`;
 
       if (marker) {
+        if (!marker._meta) marker._meta = {};
+marker._meta.dkReverseData = revData;
+marker._meta.foreignFeature = null;
+setMarkerHoverAddress(marker, `${obj.tekst} – ${adresseStr}`);
+attachKeepMarkerBehaviors(marker);
+setActiveInfoMarker(marker);
         marker.bindPopup(`
           <strong>${obj.tekst}</strong><br>
           ${adresseStr}<br>
