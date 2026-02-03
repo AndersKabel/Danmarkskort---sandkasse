@@ -524,7 +524,7 @@ async function planRouteORS() {
     const poly = L.polyline(latLngs, {
       color: "blue",
       weight: 5,
-      opacity: 1.7
+      opacity: 0.7
     }).addTo(routeLayer);
 
     if (!map.hasLayer(routeLayer)) {
