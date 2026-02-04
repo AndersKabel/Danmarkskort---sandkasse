@@ -1,0 +1,4 @@
+[
+  { "id": "aarhus", "name": "Aarhus (8000-8999)", "type": "postnumre", "values": ["8000","8999"] },
+  { "id": "bugsering", "name": "Bugsering", "type": "ydelseskoder", "values": ["40","42","43","45","47"] }
+]
