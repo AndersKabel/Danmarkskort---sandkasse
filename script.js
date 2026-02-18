@@ -1034,6 +1034,10 @@ var dbJournalLayer = L.layerGroup();
 var border25Layer  = L.layerGroup();
 var chargeMapLayer = L.layerGroup();
 
+// SharePoint-markører (vises kun når overlay aktiveres)
+var sharePointMarkersLayer = L.layerGroup();
+var sharePointMarkersLoaded = false; // så vi ikke loader igen og igen
+
 // NYT: lag til at samle ekstra markører, når "Behold markører" er slået til
 var keepMarkersLayer   = L.layerGroup();
 var keepMarkersEnabled = false;
