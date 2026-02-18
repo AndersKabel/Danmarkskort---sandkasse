@@ -1335,6 +1335,10 @@ map.on('overlayadd', function(e) {
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
     keepMarkersEnabled = true;
+        // Vis SharePoint refresh-knappen kun når "Behold markører" er aktivt
+    if (spRefreshControl && spRefreshControl._container) {
+      spRefreshControl._container.style.display = "block";
+    }
 
     // Hvis der allerede findes en aktuel markør, flyttes den over i laget
       if (currentMarker) {
