@@ -1227,6 +1227,49 @@ if (weatherRainLayer) {
 }
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
+// ===============================
+// SharePoint refresh helper + knap
+// ===============================
+function refreshSharePointMarkers() {
+  // Kun refresh hvis overlayet er aktivt
+  if (!map.hasLayer(sharePointMarkersLayer)) {
+    alert("Tænd 'SharePoint markører' først, før du refresher.");
+    return;
+  }
+
+  // Ryd + tillad reload
+  sharePointMarkersLayer.clearLayers();
+  sharePointMarkersLoaded = false;
+
+  // Reload
+  sharePointMarkersLoaded = true;
+  loadSharePointMarkers();
+}
+
+// Leaflet control-knap (Refresh)
+const SharePointRefreshControl = L.Control.extend({
+  options: { position: "topright" },
+  onAdd: function () {
+    const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+    const btn = L.DomUtil.create("a", "", container);
+    btn.href = "#";
+    btn.title = "Refresh SharePoint markører";
+    btn.innerHTML = "⟳";
+
+    // Undgå at kortet panorerer/zoomer når man klikker
+    L.DomEvent.disableClickPropagation(container);
+
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      refreshSharePointMarkers();
+    });
+
+    return container;
+  }
+});
+
+// Tilføj knappen til kortet
+map.addControl(new SharePointRefreshControl());
 
 map.on('overlayadd', function(e) {
   if (e.layer === dbSmsLayer) {
