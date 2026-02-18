@@ -1211,6 +1211,7 @@ const overlayMaps = {
   "25 km grænse": border25Layer,
   "Ladestandere": chargeMapLayer,
   "Rutenummereret vejnet": rutenummerLayer,
+  "SharePoint markører": sharePointMarkersLayer,
   // NYT: overlay til at beholde markører
   "Behold markører": keepMarkersLayer
 };
