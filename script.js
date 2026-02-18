@@ -3285,7 +3285,9 @@ async function loadSharePointMarkers() {
     );
 
     const data = await response.json();
-
+    // Sikkerhed: undgå dubletter hvis funktionen kaldes flere gange
+    sharePointMarkersLayer.clearLayers();
+    
     if (!data.ok) {
       console.error("Worker error:", data);
       return;
