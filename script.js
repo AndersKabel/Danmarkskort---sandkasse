@@ -1251,6 +1251,11 @@ const SharePointRefreshControl = L.Control.extend({
   options: { position: "topright" },
   onAdd: function () {
     const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+        // Start skjult (vises kun når "Behold markører" er aktivt)
+    container.style.display = "none";
+
+    // Gem reference, så vi kan toggle synlighed udefra
+    this._container = container;
     const btn = L.DomUtil.create("a", "", container);
     btn.href = "#";
     btn.title = "Refresh SharePoint markører";
