@@ -3222,7 +3222,6 @@ document.addEventListener("DOMContentLoaded", function() {
     routePreferenceSel.addEventListener("change", autoRecalculateRoute);
   }
   
-loadSharePointMarkers();
 });
 
 // ===============================
