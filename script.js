@@ -1364,6 +1364,10 @@ map.on('overlayremove', function(e) {
 
   if (e.layer === keepMarkersLayer) {
     keepMarkersEnabled = false;
+        // Skjul SharePoint refresh-knappen når "Behold markører" slås fra
+    if (spRefreshControl && spRefreshControl._container) {
+      spRefreshControl._container.style.display = "none";
+    }
     keepMarkersLayer.clearLayers();
     if (currentMarker && map.hasLayer(currentMarker)) {
       map.removeLayer(currentMarker);
