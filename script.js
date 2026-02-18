@@ -1269,7 +1269,8 @@ const SharePointRefreshControl = L.Control.extend({
 });
 
 // Tilføj knappen til kortet
-map.addControl(new SharePointRefreshControl());
+const spRefreshControl = new SharePointRefreshControl();
+map.addControl(spRefreshControl);
 
 map.on('overlayadd', function(e) {
   if (e.layer === dbSmsLayer) {
