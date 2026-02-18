@@ -3210,3 +3210,43 @@ document.addEventListener("DOMContentLoaded", function() {
     routePreferenceSel.addEventListener("change", autoRecalculateRoute);
   }
 });
+
+// ===============================
+// Load markers from SharePoint (via Worker)
+// ===============================
+
+async function loadSharePointMarkers() {
+  try {
+    const response = await fetch(
+      "https://danmarkskort-sp.anderskabel8.workers.dev/markers?workspace=Test&mapId=default"
+    );
+
+    const data = await response.json();
+
+    if (!data.ok) {
+      console.error("Worker error:", data);
+      return;
+    }
+
+    console.log("Loaded markers:", data);
+
+    (data.items || []).forEach(item => {
+      const f = item.fields || {};
+
+      if (typeof f.Lat !== "number" || typeof f.Lon !== "number") {
+        return;
+      }
+
+      const marker = L.marker([f.Lat, f.Lon]).addTo(map);
+
+      marker.bindPopup(`
+        <strong>${f.Title || "Markør"}</strong><br>
+        ${f.AddressText || ""}<br>
+        ${f.Note || ""}
+      `);
+    });
+
+  } catch (err) {
+    console.error("Load markers failed:", err);
+  }
+}
