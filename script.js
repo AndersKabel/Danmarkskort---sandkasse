@@ -3242,7 +3242,7 @@ async function loadSharePointMarkers() {
         return;
       }
 
-      const marker = L.marker([f.Lat, f.Lon]).addTo(map);
+            const marker = L.marker([lat, lon]).addTo(map);
 
       marker.bindPopup(`
         <strong>${f.Title || "Markør"}</strong><br>
