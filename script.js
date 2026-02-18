@@ -3209,6 +3209,8 @@ document.addEventListener("DOMContentLoaded", function() {
   if (routePreferenceSel) {
     routePreferenceSel.addEventListener("change", autoRecalculateRoute);
   }
+  
+loadSharePointMarkers();
 });
 
 // ===============================
