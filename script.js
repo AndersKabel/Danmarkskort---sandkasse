@@ -1276,6 +1276,13 @@ map.on('overlayadd', function(e) {
       });
     })
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
+      } else if (e.layer === sharePointMarkersLayer) {
+    // Når brugeren slår overlayet til, loader vi markører én gang
+    if (!sharePointMarkersLoaded) {
+      sharePointMarkersLoaded = true;
+      loadSharePointMarkers();
+    }
+
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
     keepMarkersEnabled = true;
