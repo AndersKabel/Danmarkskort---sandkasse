@@ -1280,6 +1280,7 @@ map.on('overlayadd', function(e) {
     // Når brugeren slår overlayet til, loader vi markører én gang
     if (!sharePointMarkersLoaded) {
       sharePointMarkersLoaded = true;
+      loadSharePointMarkers();
     }
 
   } else if (e.layer === keepMarkersLayer) {
