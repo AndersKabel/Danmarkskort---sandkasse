@@ -1280,7 +1280,6 @@ map.on('overlayadd', function(e) {
     // Når brugeren slår overlayet til, loader vi markører én gang
     if (!sharePointMarkersLoaded) {
       sharePointMarkersLoaded = true;
-      loadSharePointMarkers();
     }
 
   } else if (e.layer === keepMarkersLayer) {
@@ -1302,6 +1301,13 @@ map.on('overlayadd', function(e) {
 
 // Når overlayet "Behold markører" slås FRA, rydder vi alle ekstra markører
 map.on('overlayremove', function(e) {
+    // Model B: Når SharePoint overlay slås fra, ryd markører og tillad reload næste gang
+  if (e.layer === sharePointMarkersLayer) {
+    sharePointMarkersLayer.clearLayers();
+    sharePointMarkersLoaded = false;
+    return;
+  }
+
   if (e.layer === keepMarkersLayer) {
     keepMarkersEnabled = false;
     keepMarkersLayer.clearLayers();
