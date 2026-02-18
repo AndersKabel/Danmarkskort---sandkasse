@@ -3235,7 +3235,10 @@ async function loadSharePointMarkers() {
     (data.items || []).forEach(item => {
       const f = item.fields || {};
 
-      if (typeof f.Lat !== "number" || typeof f.Lon !== "number") {
+            const lat = typeof f.Lat === "number" ? f.Lat : parseFloat(f.Lat);
+      const lon = typeof f.Lon === "number" ? f.Lon : parseFloat(f.Lon);
+
+      if (!isFinite(lat) || !isFinite(lon)) {
         return;
       }
 
