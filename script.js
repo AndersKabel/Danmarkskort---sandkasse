@@ -3451,11 +3451,32 @@ const SP_API_KEY = "INDSÆT_DIN_API_KEY_HER";
 // Save/Delete marker to SharePoint (via Worker)
 // ===============================
 async function saveSharePointMarker(payload) {
-  const url = "https://danmarkskort-sp.anderskabel8.workers.dev/markers?workspace=Test&mapId=default";
+  const url =
+    `${SP_WORKER_BASE}/markers` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+
+  // Worker forventer: markerId, workspace, mapId, lat, lon, addressText, note (mv.)
+  // Vi mapper fra din nuværende payload (Lat/Lon/AddressText/Note) til worker-format.
+  const body = {
+    markerId: (payload && payload.markerId) ? String(payload.markerId) : undefined,
+    workspace: SP_WORKSPACE,
+    mapId: SP_MAP_ID,
+    lat: payload && typeof payload.Lat === "number" ? payload.Lat : Number(payload?.Lat),
+    lon: payload && typeof payload.Lon === "number" ? payload.Lon : Number(payload?.Lon),
+    addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
+    note: payload && payload.Note != null ? String(payload.Note) : "",
+    status: payload && payload.Status != null ? String(payload.Status) : "",
+    yk: payload && payload.YK != null ? String(payload.YK) : ""
+  };
+
   const resp = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": SP_API_KEY
+    },
+    body: JSON.stringify(body)
   });
 
   let data = null;
@@ -3465,6 +3486,10 @@ async function saveSharePointMarker(payload) {
     console.error("Save SharePoint marker failed:", data);
     return { ok: false, data };
   }
+
+  // Returnér alt vi kan bruge:
+  // - markerId (vores id)
+  // - createdItemId (SharePoint item id)
   return data || { ok: true };
 }
 
