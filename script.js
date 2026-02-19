@@ -3479,7 +3479,11 @@ async function loadSharePointMarkers() {
 
             const marker = L.marker([lat, lon]);
 sharePointMarkersLayer.addLayer(marker);
+      // Gem SharePoint item-id på markøren (så højreklik kan slette server-side)
+      if (!marker._meta) marker._meta = {};
+      marker._meta._spItemId = item.id || item.itemId || f.Id || f.ID || null;
 
+      attachSharePointMarkerBehaviors(marker);
 
       marker.bindPopup(`
         <strong>${f.Title || "Markør"}</strong><br>
