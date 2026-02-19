@@ -2951,13 +2951,21 @@ function doSearch(query, listElement) {
 
                     const saved = await saveSharePointMarker(payload);
 
-                    // Gem itemId på markøren så vi kan slette igen
-                    if (saved && saved.ok && currentMarker) {
-                      if (!currentMarker._meta) currentMarker._meta = {};
-                      currentMarker._meta._spItemId =
-                        saved.id || saved.itemId || saved.item?.id || saved.data?.id || null;
+// Gem markerId på markøren (det er det worker sletter på i option A)
+if (saved && saved.ok && currentMarker) {
+  if (!currentMarker._meta) currentMarker._meta = {};
 
-                      attachSharePointMarkerBehaviors(currentMarker);
+  // Worker returnerer markerId + createdItemId
+  currentMarker._meta._spMarkerId =
+    saved.markerId ||
+    saved.markerId?.toString?.() ||
+    null;
+
+  currentMarker._meta._spItemId =
+    saved.createdItemId || null;
+
+  attachSharePointMarkerBehaviors(currentMarker);
+}
                     }
                   }
                 })
