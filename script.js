@@ -2954,20 +2954,50 @@ function doSearch(query, listElement) {
         Note: ""
       };
 
-      const saved = await saveSharePointMarker(payload);
+                          // Dedupe: brug stabil markerId (samme koordinat => samme id => ingen dubletter)
+                    const stableId = makeStableMarkerId(lat, lon, 5);
+                    payload.markerId = stableId;
 
-      // Gem markerId på markøren (det er det worker sletter på i option A)
-      if (saved && saved.ok && currentMarker) {
-        if (!currentMarker._meta) currentMarker._meta = {};
+                    // Hvis vi allerede har set denne markerId i denne session, så skip POST (undgår dublet)
+                    if (stableId && spMarkerIndex.has(stableId)) {
+                      // Sikr at markerens meta også er sat
+                      if (currentMarker) {
+                        if (!currentMarker._meta) currentMarker._meta = {};
+                        currentMarker._meta._spMarkerId = stableId;
 
-        currentMarker._meta._spMarkerId =
-          saved.markerId != null ? String(saved.markerId) : null;
+                        const known = spMarkerIndex.get(stableId);
+                        if (known && known.itemId) {
+                          currentMarker._meta._spItemId = known.itemId;
+                        }
+                        attachSharePointMarkerBehaviors(currentMarker);
+                      }
+                    } else {
+                      const saved = await saveSharePointMarker(payload);
 
-        currentMarker._meta._spItemId =
-          saved.createdItemId != null ? String(saved.createdItemId) : null;
+                      // Gem markerId på markøren (det er det worker sletter på i option A)
+                      if (saved && saved.ok && currentMarker) {
+                        if (!currentMarker._meta) currentMarker._meta = {};
 
-        attachSharePointMarkerBehaviors(currentMarker);
-      }
+                        // Worker returnerer markerId + createdItemId
+                        currentMarker._meta._spMarkerId =
+                          saved.markerId ||
+                          stableId ||
+                          null;
+
+                        currentMarker._meta._spItemId =
+                          saved.createdItemId || null;
+
+                        // Opdater index, så næste gang undgår vi dublet
+                        if (currentMarker._meta._spMarkerId) {
+                          spMarkerIndex.set(currentMarker._meta._spMarkerId, {
+                            marker: currentMarker,
+                            itemId: currentMarker._meta._spItemId
+                          });
+                        }
+
+                        attachSharePointMarkerBehaviors(currentMarker);
+                      }
+                    }
     }
   })
   .catch(err => console.error("Reverse geocoding fejl:", err));
