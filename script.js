@@ -3895,18 +3895,19 @@ async function loadSharePointMarkers() {
 
     console.log("Loaded markers:", data);
 
-    // Lille helper til at undgå at Note/AddressText kan ødelægge HTML i popup
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
     (data.items || []).forEach(item => {
       const f = item.fields || {};
+
+      // SKIP: skjulte ture (soft delete)
+      const hidden =
+        (f.HiddenOnMap === true) ||
+        (String(f.HiddenOnMap || "").toLowerCase() === "true") ||
+        (String(f.HiddenOnMap || "").toLowerCase() === "yes") ||
+        (f.HiddenOnMap === 1) ||
+        (String(f.HiddenOnMap || "").toLowerCase() === "1") ||
+        (f.hiddenOnMap === true);
+
+      if (hidden) return;
 
       const lat = typeof f.Lat === "number" ? f.Lat : parseFloat(f.Lat);
       const lon = typeof f.Lon === "number" ? f.Lon : parseFloat(f.Lon);
@@ -3934,22 +3935,17 @@ async function loadSharePointMarkers() {
 
       attachSharePointMarkerBehaviors(marker);
 
-      // POPUP: Vis IKKE markerId-agtig Title.
-      const addressText = (f.AddressText != null ? String(f.AddressText).trim() : "");
-      const titleRaw = (f.Title != null ? String(f.Title).trim() : "");
-      const titleLooksLikeMarkerId = titleRaw.startsWith("sp_");
+      // Popup: vis ikke "sp_..."-agtige titler hvis worker har sat Title = markerId
+      const title =
+        (f.Title && String(f.Title).trim() !== "" && !String(f.Title).startsWith("sp_"))
+          ? String(f.Title)
+          : "Markør";
 
-      const headline =
-        addressText ||
-        (!titleLooksLikeMarkerId && titleRaw ? titleRaw : "Markør");
-
-      const noteText = (f.Note != null ? String(f.Note).trim() : "");
-
-      const popupHtml =
-        `<strong>${escapeHtml(headline)}</strong>` +
-        (noteText ? `<div style="margin-top:6px; white-space:pre-wrap;">${escapeHtml(noteText)}</div>` : "");
-
-      marker.bindPopup(popupHtml);
+      marker.bindPopup(`
+        <strong>${title}</strong><br>
+        ${f.AddressText || ""}<br>
+        ${f.Note || ""}
+      `);
     });
 
   } catch (err) {
