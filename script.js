@@ -3640,7 +3640,86 @@ function makeStableMarkerId(lat, lon, decimals = 5) {
 
   return `sp_${ws}_${mid}_${latFixed}_${lonFixed}`;
 }
+// ===============================
+// SharePoint note auto-save (debounced)
+// ===============================
+const spNoteSaveTimers = new Map();
 
+/**
+ * Debounced upsert af markørens note til SharePoint.
+ * Forudsætter at worker "POST /markers" kan opdatere eksisterende item når markerId matcher.
+ */
+function scheduleSharePointNoteSave(marker) {
+  if (!marker) return;
+  if (!sharePointModeEnabled) return;
+
+  // Kun relevant for markører i SharePoint-laget
+  try {
+    if (!sharePointMarkersLayer || !sharePointMarkersLayer.hasLayer(marker)) return;
+  } catch (e) {
+    return;
+  }
+
+  const markerId =
+    marker?._meta?._spMarkerId ||
+    marker?._meta?._spMarkerID ||
+    marker?._spMarkerId ||
+    null;
+
+  // Hvis vi ikke har et markerId, kan vi stadig beregne et stabilt
+  const latlng = marker.getLatLng();
+  const fallbackId = makeStableMarkerId(latlng.lat, latlng.lng, 5);
+  const usedMarkerId = markerId || fallbackId;
+
+  if (!usedMarkerId) return;
+
+  // Debounce pr. markerId
+  const existing = spNoteSaveTimers.get(usedMarkerId);
+  if (existing) clearTimeout(existing);
+
+  const t = setTimeout(async () => {
+    try {
+      const addressText =
+        (marker._meta && marker._meta.addressText != null)
+          ? String(marker._meta.addressText)
+          : "";
+
+      const note =
+        (marker._meta && marker._meta.note != null)
+          ? String(marker._meta.note)
+          : "";
+
+      const payload = {
+        Title: "Markør",
+        Lat: latlng.lat,
+        Lon: latlng.lng,
+        AddressText: addressText,
+        Note: note,
+        markerId: usedMarkerId
+      };
+
+      const saved = await saveSharePointMarker(payload);
+
+      // Sikr at markøren kender markerId efter første save
+      if (saved && saved.ok && marker._meta) {
+        marker._meta._spMarkerId = saved.markerId || usedMarkerId;
+        if (saved.createdItemId) marker._meta._spItemId = saved.createdItemId;
+
+        // opdater index
+        if (marker._meta._spMarkerId) {
+          spMarkerIndex.set(marker._meta._spMarkerId, {
+            marker: marker,
+            itemId: marker._meta._spItemId || null
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Kunne ikke auto-gemme note til SharePoint:", e);
+    }
+  }, 600);
+
+  spNoteSaveTimers.set(usedMarkerId, t);
+}
 // ===============================
 // Save/Delete marker to SharePoint (via Worker) - COOKIE AUTH
 // ===============================
