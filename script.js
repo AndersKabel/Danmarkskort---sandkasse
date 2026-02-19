@@ -1064,11 +1064,16 @@ function attachSharePointMarkerBehaviors(marker) {
     const ok = confirm("Slet denne SharePoint-markør?");
     if (!ok) return;
 
-    // Slet i SharePoint hvis vi har item-id
+        // Slet i SharePoint hvis vi har MarkerId (option A)
     try {
-      const itemId = marker?._meta?._spItemId || marker?._spItemId || null;
-      if (itemId) {
-        await deleteSharePointMarker(itemId);
+      const markerId =
+        marker?._meta?._spMarkerId ||
+        marker?._meta?._spMarkerID ||
+        marker?._spMarkerId ||
+        null;
+
+      if (markerId) {
+        await deleteSharePointMarker(markerId);
       }
     } catch (e) {
       console.warn("Kunne ikke slette SharePoint-item (fortsætter med at fjerne lokalt):", e);
