@@ -1449,8 +1449,14 @@ map.on('overlayadd', function(e) {
 
 // Når overlayet "Behold markører" slås FRA, rydder vi alle ekstra markører
 map.on('overlayremove', function(e) {
-    // Model B: Når SharePoint overlay slås fra, ryd markører og tillad reload næste gang
+  // Når SharePoint overlay slås fra: mode OFF + skjul refresh + ryd markører
   if (e.layer === sharePointMarkersLayer) {
+    sharePointModeEnabled = false;
+
+    if (spRefreshControl && spRefreshControl._container) {
+      spRefreshControl._container.style.display = "none";
+    }
+
     sharePointMarkersLayer.clearLayers();
     sharePointMarkersLoaded = false;
     return;
@@ -1458,15 +1464,11 @@ map.on('overlayremove', function(e) {
 
   if (e.layer === keepMarkersLayer) {
     keepMarkersEnabled = false;
-        // Skjul SharePoint refresh-knappen når "Behold markører" slås fra
-    if (spRefreshControl && spRefreshControl._container) {
-      spRefreshControl._container.style.display = "none";
-    }
+
     keepMarkersLayer.clearLayers();
     if (currentMarker && map.hasLayer(currentMarker)) {
       map.removeLayer(currentMarker);
-          // Hvis vi havde en aktiv fastlåst markør i infoboksen, nulstil note UI
-    setActiveInfoMarker(null);
+      setActiveInfoMarker(null);
     }
     currentMarker = null;
   }
