@@ -3629,6 +3629,132 @@ async function saveSharePointMarker(payload) {
 
   return data || { ok: true };
 }
+/**
+ * Opdater felter på en eksisterende SharePoint-markør via worker.
+ * Forventer at worker understøtter PATCH (eller PUT) på /markers/{markerId}.
+ * Fallback: hvis PATCH fejler, prøver vi POST (upsert) med samme markerId.
+ */
+async function updateSharePointMarker(markerId, fieldsObj) {
+  const id = String(markerId || "").trim();
+  if (!id) throw new Error("updateSharePointMarker: missing markerId");
+
+  // Primær: PATCH /markers/{markerId}
+  const patchUrl =
+    `/markers/${encodeURIComponent(id)}` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+
+  // Vi sender kun de felter vi vil opdatere (fx { note: "..." })
+  const patchBody = Object.assign({}, fieldsObj || {}, {
+    markerId: id,
+    workspace: SP_WORKSPACE,
+    mapId: SP_MAP_ID
+  });
+
+  let resp = await spFetch(patchUrl, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patchBody)
+  });
+
+  // Hvis worker ikke accepterer PATCH, prøv PUT som sekundær
+  if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+    resp = await spFetch(patchUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patchBody)
+    });
+  }
+
+  // Hvis stadig ikke ok: fallback til POST "upsert" med samme markerId
+  if (!resp.ok) {
+    const body = {
+      markerId: id,
+      workspace: SP_WORKSPACE,
+      mapId: SP_MAP_ID,
+      lat: Number(fieldsObj?.lat),
+      lon: Number(fieldsObj?.lon),
+      addressText: fieldsObj?.addressText != null ? String(fieldsObj.addressText) : "",
+      note: fieldsObj?.note != null ? String(fieldsObj.note) : "",
+      status: fieldsObj?.status != null ? String(fieldsObj.status) : "",
+      yk: fieldsObj?.yk != null ? String(fieldsObj.yk) : ""
+    };
+
+    // Hvis lat/lon ikke er med, tager vi dem fra currentMarker
+    if ((!isFinite(body.lat) || !isFinite(body.lon)) && currentMarker) {
+      const ll = currentMarker.getLatLng();
+      body.lat = ll.lat;
+      body.lon = ll.lng;
+    }
+
+    const upsertResp = await spFetch(
+      `/markers?workspace=${encodeURIComponent(SP_WORKSPACE)}&mapId=${encodeURIComponent(SP_MAP_ID)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }
+    );
+
+    let upsertData = null;
+    try { upsertData = await upsertResp.json(); } catch (e) {}
+
+    if (!upsertResp.ok || (upsertData && upsertData.ok === false)) {
+      throw new Error("updateSharePointMarker failed (PATCH/PUT + POST fallback)");
+    }
+    return upsertData || { ok: true };
+  }
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+  if (data && data.ok === false) throw new Error("updateSharePointMarker worker returned ok:false");
+  return data || { ok: true };
+}
+
+/**
+ * Debounced note-update til SharePoint for en given marker.
+ * Lægger timer på marker._meta så hver markør har sin egen debounce.
+ */
+function queueSharePointNoteUpdate(marker, newNote) {
+  if (!sharePointModeEnabled) return;
+  if (!marker) return;
+
+  if (!marker._meta) marker._meta = {};
+  const markerId =
+    marker._meta._spMarkerId ||
+    marker._meta._spMarkerID ||
+    marker._spMarkerId ||
+    null;
+
+  if (!markerId) return;
+
+  const noteStr = (newNote != null ? String(newNote) : "");
+  if (marker._meta._lastSentNote === noteStr) return;
+
+  // Debounce pr. marker
+  if (marker._meta._spNoteSaveTimer) {
+    clearTimeout(marker._meta._spNoteSaveTimer);
+  }
+
+  marker._meta._spNoteSaveTimer = setTimeout(async function () {
+    try {
+      marker._meta._lastSentNote = noteStr;
+
+      // Tag adressetekst med hvis worker kræver det (harmløst ellers)
+      const ll = marker.getLatLng();
+      const addressText = marker._meta.addressText || "";
+
+      await updateSharePointMarker(markerId, {
+        note: noteStr,
+        lat: ll.lat,
+        lon: ll.lng,
+        addressText: addressText
+      });
+    } catch (e) {
+      console.warn("SharePoint note-update fejlede:", e);
+    }
+  }, 600);
+}
 
 async function deleteSharePointMarker(markerId) {
   const url =
