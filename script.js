@@ -2935,46 +2935,42 @@ function doSearch(query, listElement) {
               placeMarkerAndZoom([lat, lon], obj.tekst);
               let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
               fetch(revUrl)
-                                .then(r => r.json())
-                .then(async reverseData => {
-                  updateInfoBox(reverseData, lat, lon);
+  .then(r => r.json())
+  .then(async reverseData => {
+    updateInfoBox(reverseData, lat, lon);
 
-                  // Hvis SharePoint overlay er aktivt => gem markøren i SharePoint
-                  if (sharePointModeEnabled) {
-                    const addressText =
-                      reverseData?.adgangsadresse?.adressebetegnelse ||
-                      reverseData?.adressebetegnelse ||
-                      (obj.tekst || "");
+    // Hvis SharePoint overlay er aktivt => gem markøren i SharePoint
+    if (sharePointModeEnabled) {
+      const addressText =
+        reverseData?.adgangsadresse?.adressebetegnelse ||
+        reverseData?.adressebetegnelse ||
+        (obj.tekst || "");
 
-                    const payload = {
-                      Title: "Markør",
-                      Lat: lat,
-                      Lon: lon,
-                      AddressText: addressText,
-                      Note: ""
-                    };
+      const payload = {
+        Title: "Markør",
+        Lat: lat,
+        Lon: lon,
+        AddressText: addressText,
+        Note: ""
+      };
 
-                    const saved = await saveSharePointMarker(payload);
+      const saved = await saveSharePointMarker(payload);
 
-// Gem markerId på markøren (det er det worker sletter på i option A)
-if (saved && saved.ok && currentMarker) {
-  if (!currentMarker._meta) currentMarker._meta = {};
+      // Gem markerId på markøren (det er det worker sletter på i option A)
+      if (saved && saved.ok && currentMarker) {
+        if (!currentMarker._meta) currentMarker._meta = {};
 
-  // Worker returnerer markerId + createdItemId
-  currentMarker._meta._spMarkerId =
-    saved.markerId ||
-    saved.markerId?.toString?.() ||
-    null;
+        currentMarker._meta._spMarkerId =
+          saved.markerId != null ? String(saved.markerId) : null;
 
-  currentMarker._meta._spItemId =
-    saved.createdItemId || null;
+        currentMarker._meta._spItemId =
+          saved.createdItemId != null ? String(saved.createdItemId) : null;
 
-  attachSharePointMarkerBehaviors(currentMarker);
-}
-                    }
-                  }
-                })
-                .catch(err => console.error("Reverse geocoding fejl:", err));
+        attachSharePointMarkerBehaviors(currentMarker);
+      }
+    }
+  })
+  .catch(err => console.error("Reverse geocoding fejl:", err));
               resultsList.innerHTML = "";
               resultsList.style.display = "none";
               vej1List.innerHTML = "";
