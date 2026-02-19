@@ -1877,8 +1877,14 @@ function updateInfoBoxForeign(feature, lat, lon) {
     if (!currentMarker._meta) currentMarker._meta = {};
     currentMarker._meta.foreignFeature = feature;
     currentMarker._meta.dkReverseData = null;
-    setMarkerHoverAddress(currentMarker, label);
-    attachKeepMarkerBehaviors(currentMarker);
+        setMarkerHoverAddress(currentMarker, label);
+
+    if (sharePointModeEnabled) {
+      attachSharePointMarkerBehaviors(currentMarker);
+    } else if (keepMarkersEnabled) {
+      attachKeepMarkerBehaviors(currentMarker);
+    }
+
     setActiveInfoMarker(currentMarker);
   }
 
