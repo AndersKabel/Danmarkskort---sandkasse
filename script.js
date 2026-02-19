@@ -2178,10 +2178,12 @@ searchInput.addEventListener("keydown", function(e) {
       document.getElementById("kommuneOverlay").style.display = "none";
       resetCoordinateBox();
 
-      if (!keepMarkersEnabled && currentMarker) {
-        map.removeLayer(currentMarker);
-        currentMarker = null;
-      }
+      if (!shouldPreserveSelectionMarker() && currentMarker) {
+  if (map.hasLayer(currentMarker)) {
+    map.removeLayer(currentMarker);
+  }
+  currentMarker = null;
+}
     }
   }
 });
@@ -2201,10 +2203,12 @@ clearBtn.addEventListener("click", function() {
   resetCoordinateBox();
   resetInfoBox();
   searchInput.focus();
-  if (!keepMarkersEnabled && currentMarker) {
+  if (!shouldPreserveSelectionMarker() && currentMarker) {
+  if (map.hasLayer(currentMarker)) {
     map.removeLayer(currentMarker);
-    currentMarker = null;
   }
+  currentMarker = null;
+}
   resultsList.innerHTML = "";
   resultsList.style.display = "none";
   document.getElementById("kommuneOverlay").style.display = "none";
@@ -3192,19 +3196,23 @@ statsvejCloseBtn.addEventListener("click", function() {
   statsvejInfoBox.style.display = "none";
   document.getElementById("infoBox").style.display = "none";
   resetCoordinateBox();
-  if (!keepMarkersEnabled && currentMarker) {
+  if (!shouldPreserveSelectionMarker() && currentMarker) {
+  if (map.hasLayer(currentMarker)) {
     map.removeLayer(currentMarker);
-    currentMarker = null;
   }
+  currentMarker = null;
+}
 });
 const infoCloseBtn = document.getElementById("infoCloseBtn");
 infoCloseBtn.addEventListener("click", function() {
   document.getElementById("infoBox").style.display = "none";
   document.getElementById("statsvejInfoBox").style.display = "none";
-  if (!keepMarkersEnabled && currentMarker) {
+  if (!shouldPreserveSelectionMarker() && currentMarker) {
+  if (map.hasLayer(currentMarker)) {
     map.removeLayer(currentMarker);
-    currentMarker = null;
   }
+  currentMarker = null;
+}
   resetCoordinateBox();
   resultsList.innerHTML = "";
   resultsList.style.display = "none";
@@ -3360,10 +3368,12 @@ document.addEventListener("DOMContentLoaded", function() {
       routeLayer.clearLayers();
 
       // Ryd kun markør, hvis vi IKKE er i "Behold markører"-tilstand
-      if (!keepMarkersEnabled && currentMarker) {
-        map.removeLayer(currentMarker);
-        currentMarker = null;
-      }
+      if (!shouldPreserveSelectionMarker() && currentMarker) {
+  if (map.hasLayer(currentMarker)) {
+    map.removeLayer(currentMarker);
+  }
+  currentMarker = null;
+}
       resetCoordinateBox();
     });
   }
