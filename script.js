@@ -3837,13 +3837,17 @@ console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.H
 
 
       // SKIP: skjulte ture (soft delete)
+            const hiddenStrA = String(f.HiddenOnMap ?? "").toLowerCase().trim();
+      const hiddenStrB = String(f.hiddenOnMap ?? "").toLowerCase().trim();
+      const hiddenStrC = String(f.hiddenonmap ?? "").toLowerCase().trim();
+
       const hidden =
         (f.HiddenOnMap === true) ||
-        (String(f.HiddenOnMap || "").toLowerCase() === "true") ||
-        (String(f.HiddenOnMap || "").toLowerCase() === "yes") ||
-        (f.HiddenOnMap === 1) ||
-        (String(f.HiddenOnMap || "").toLowerCase() === "1") ||
-        (f.hiddenOnMap === true);
+        (f.hiddenOnMap === true) ||
+        (hiddenStrA === "true" || hiddenStrA === "1" || hiddenStrA === "yes") ||
+        (hiddenStrB === "true" || hiddenStrB === "1" || hiddenStrB === "yes") ||
+        (hiddenStrC === "true" || hiddenStrC === "1" || hiddenStrC === "yes") ||
+        (f.HiddenOnMap === 1);
 
       if (hidden) return;
 
