@@ -1319,22 +1319,43 @@ const SharePointRefreshControl = L.Control.extend({
   options: { position: "topright" },
   onAdd: function () {
     const container = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-        // Start skjult (vises kun når "Behold markører" er aktivt)
+
+    // Start skjult (vises kun når "SharePoint markører" er aktivt)
     container.style.display = "none";
 
     // Gem reference, så vi kan toggle synlighed udefra
     this._container = container;
+
     const btn = L.DomUtil.create("a", "", container);
     btn.href = "#";
     btn.title = "Refresh SharePoint markører";
     btn.innerHTML = "⟳";
+    btn.style.cursor = "pointer";
 
     // Undgå at kortet panorerer/zoomer når man klikker
     L.DomEvent.disableClickPropagation(container);
 
-    btn.addEventListener("click", function (e) {
+    btn.addEventListener("click", async (e) => {
       e.preventDefault();
-      refreshSharePointMarkers();
+
+      // Kun refresh hvis overlayet er aktivt
+      if (!map.hasLayer(sharePointMarkersLayer)) {
+        alert("Tænd 'SharePoint markører' først, før du refresher.");
+        return;
+      }
+
+      // Loading state (synligt mens den henter)
+      try {
+        btn.innerHTML = "⟳…";
+        btn.style.pointerEvents = "none";
+        btn.style.opacity = "0.6";
+
+        await refreshSharePointMarkersAsync();
+      } finally {
+        btn.innerHTML = "⟳";
+        btn.style.pointerEvents = "";
+        btn.style.opacity = "";
+      }
     });
 
     return container;
