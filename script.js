@@ -1526,6 +1526,19 @@ function setCoordinateBox(lat, lon) {
  * Respekterer keepMarkersEnabled / keepMarkersLayer
  ***************************************************/
 function createSelectionMarker(lat, lon) {
+  // 1) SharePoint mode: marker skal altid blive i sharePointMarkersLayer
+  if (sharePointModeEnabled) {
+    const m = L.marker([lat, lon]);
+    sharePointMarkersLayer.addLayer(m);
+    currentMarker = m;
+
+    attachSharePointMarkerBehaviors(currentMarker);
+    setActiveInfoMarker(currentMarker);
+
+    return currentMarker;
+  }
+
+  // 2) Normal / keep-mode (som før)
   if (!keepMarkersEnabled) {
     // Normal tilstand: kun én markør – fjern den gamle
     if (currentMarker && map.hasLayer(currentMarker)) {
@@ -1538,11 +1551,9 @@ function createSelectionMarker(lat, lon) {
     keepMarkersLayer.addLayer(m);
     currentMarker = m;
 
-    // Attach keep behaviors (right click delete + click reopen)
     attachKeepMarkerBehaviors(currentMarker);
   }
 
-  // Når vi opretter en ny markør, gør den til aktiv for note-feltet
   setActiveInfoMarker(currentMarker);
 
   return currentMarker;
