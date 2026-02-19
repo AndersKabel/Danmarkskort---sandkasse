@@ -2930,9 +2930,36 @@ function doSearch(query, listElement) {
               placeMarkerAndZoom([lat, lon], obj.tekst);
               let revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
               fetch(revUrl)
-                .then(r => r.json())
-                .then(reverseData => {
+                                .then(r => r.json())
+                .then(async reverseData => {
                   updateInfoBox(reverseData, lat, lon);
+
+                  // Hvis SharePoint overlay er aktivt => gem markøren i SharePoint
+                  if (sharePointModeEnabled) {
+                    const addressText =
+                      reverseData?.adgangsadresse?.adressebetegnelse ||
+                      reverseData?.adressebetegnelse ||
+                      (obj.tekst || "");
+
+                    const payload = {
+                      Title: "Markør",
+                      Lat: lat,
+                      Lon: lon,
+                      AddressText: addressText,
+                      Note: ""
+                    };
+
+                    const saved = await saveSharePointMarker(payload);
+
+                    // Gem itemId på markøren så vi kan slette igen
+                    if (saved && saved.ok && currentMarker) {
+                      if (!currentMarker._meta) currentMarker._meta = {};
+                      currentMarker._meta._spItemId =
+                        saved.id || saved.itemId || saved.item?.id || saved.data?.id || null;
+
+                      attachSharePointMarkerBehaviors(currentMarker);
+                    }
+                  }
                 })
                 .catch(err => console.error("Reverse geocoding fejl:", err));
               updateInfoBox(addressData, lat, lon);
