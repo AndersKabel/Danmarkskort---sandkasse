@@ -3863,11 +3863,15 @@ async function loadSharePointMarkers() {
 
       if (!marker._meta) marker._meta = {};
       marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
-      marker._meta._spItemId = item.id || item.itemId || null;
-            marker._meta.note = f.Note != null ? String(f.Note) : "";
+            marker._meta._spItemId = item.id || item.itemId || null;
+      marker._meta.note = f.Note != null ? String(f.Note) : "";
 
-      if (f.AddressText) {
-        setMarkerHoverAddress(marker, String(f.AddressText));
+      // Gem addressText deterministisk (bruges bl.a. af note-opdatering)
+      marker._meta.addressText = f.AddressText != null ? String(f.AddressText) : "";
+
+      // Tooltip hvis vi har tekst
+      if (marker._meta.addressText) {
+        setMarkerHoverAddress(marker, marker._meta.addressText);
       }
 
       if (marker._meta._spMarkerId) {
