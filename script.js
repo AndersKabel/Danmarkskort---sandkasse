@@ -3410,6 +3410,41 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   
 });
+// ===============================
+// Save/Delete marker to SharePoint (via Worker)
+// ===============================
+async function saveSharePointMarker(payload) {
+  const url = "https://danmarkskort-sp.anderskabel8.workers.dev/markers?workspace=Test&mapId=default";
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Save SharePoint marker failed:", data);
+    return { ok: false, data };
+  }
+  return data || { ok: true };
+}
+
+async function deleteSharePointMarker(itemId) {
+  // OBS: Denne forudsætter at din worker understøtter DELETE /markers/:id
+  const url = `https://danmarkskort-sp.anderskabel8.workers.dev/markers/${encodeURIComponent(itemId)}?workspace=Test&mapId=default`;
+  const resp = await fetch(url, { method: "DELETE" });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Delete SharePoint marker failed:", data);
+    throw new Error("Delete SharePoint marker failed");
+  }
+  return data || { ok: true };
+}
 
 // ===============================
 // Load markers from SharePoint (via Worker)
