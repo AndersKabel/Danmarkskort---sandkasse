@@ -3535,8 +3535,13 @@ async function deleteSharePointMarker(markerId) {
 
 async function loadSharePointMarkers() {
   try {
-    const response = await fetch(
-      "https://danmarkskort-sp.anderskabel8.workers.dev/markers?workspace=Test&mapId=default"
+        const response = await fetch(
+      `${SP_WORKER_BASE}/markers?workspace=${encodeURIComponent(SP_WORKSPACE)}&mapId=${encodeURIComponent(SP_MAP_ID)}`,
+      {
+        headers: {
+          "X-API-Key": SP_API_KEY
+        }
+      }
     );
 
     const data = await response.json();
