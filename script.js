@@ -3815,6 +3815,7 @@ async function loadSharePointMarkers() {
       if (!marker._meta) marker._meta = {};
       marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
       marker._meta._spItemId = item.id || item.itemId || null;
+            marker._meta.note = f.Note != null ? String(f.Note) : "";
 
       if (f.AddressText) {
         setMarkerHoverAddress(marker, String(f.AddressText));
