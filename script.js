@@ -1139,10 +1139,14 @@ function setupMarkerNoteUI(marker) {
 
   if (!marker._meta) marker._meta = {};
   ta.value = marker._meta.note || "";
-
   ta.oninput = function () {
     if (!marker._meta) marker._meta = {};
     marker._meta.note = ta.value;
+
+    // Når SharePoint overlay er aktivt: gem note til SharePoint (debounced)
+    if (sharePointModeEnabled) {
+      queueSharePointNoteUpdate(marker, ta.value);
+    }
   };
 }
 
