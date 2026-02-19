@@ -3624,12 +3624,26 @@ async function loadSharePointMarkers() {
         return;
       }
 
-            const marker = L.marker([lat, lon]);
-sharePointMarkersLayer.addLayer(marker);
-      // Gem SharePoint item-id på markøren (så højreklik kan slette server-side)
+                  const marker = L.marker([lat, lon]);
+      sharePointMarkersLayer.addLayer(marker);
+
+      // Gem SharePoint id'er på markøren
       if (!marker._meta) marker._meta = {};
-            marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
+      marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
       marker._meta._spItemId = item.id || item.itemId || null;
+
+      // Hover-tooltip: altid vis AddressText hvis den findes
+      if (f.AddressText) {
+        setMarkerHoverAddress(marker, String(f.AddressText));
+      }
+
+      // Opdater index (dedupe + opdatering)
+      if (marker._meta._spMarkerId) {
+        spMarkerIndex.set(marker._meta._spMarkerId, {
+          marker: marker,
+          itemId: marker._meta._spItemId
+        });
+      }
 
       attachSharePointMarkerBehaviors(marker);
 
