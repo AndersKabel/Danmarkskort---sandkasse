@@ -3437,6 +3437,17 @@ document.addEventListener("DOMContentLoaded", function() {
   
 });
 // ===============================
+// SharePoint Worker config
+// ===============================
+const SP_WORKER_BASE = "https://danmarkskort-sp.anderskabel8.workers.dev";
+const SP_WORKSPACE = "Test";
+const SP_MAP_ID = "default";
+
+// OBS: Hvis sitet er offentligt, er denne key synlig i browseren.
+// Brug den primært som "anti-misuse" – ikke som hemmelig sikkerhed.
+const SP_API_KEY = "INDSÆT_DIN_API_KEY_HER";
+
+// ===============================
 // Save/Delete marker to SharePoint (via Worker)
 // ===============================
 async function saveSharePointMarker(payload) {
