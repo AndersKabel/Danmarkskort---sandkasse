@@ -3491,12 +3491,21 @@ async function saveSharePointMarker(payload) {
 
   // Worker forventer: markerId, workspace, mapId, lat, lon, addressText, note (mv.)
   // Vi mapper fra din nuværende payload (Lat/Lon/AddressText/Note) til worker-format.
+    const latVal = payload && typeof payload.Lat === "number" ? payload.Lat : Number(payload?.Lat);
+  const lonVal = payload && typeof payload.Lon === "number" ? payload.Lon : Number(payload?.Lon);
+
+  const stableId = makeStableMarkerId(latVal, lonVal, 5);
+
   const body = {
-    markerId: (payload && payload.markerId) ? String(payload.markerId) : undefined,
+    // ALWAYS send markerId (idempotent)
+    markerId: (payload && payload.markerId) ? String(payload.markerId) : (stableId || undefined),
+
     workspace: SP_WORKSPACE,
     mapId: SP_MAP_ID,
-    lat: payload && typeof payload.Lat === "number" ? payload.Lat : Number(payload?.Lat),
-    lon: payload && typeof payload.Lon === "number" ? payload.Lon : Number(payload?.Lon),
+
+    lat: latVal,
+    lon: lonVal,
+
     addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
     note: payload && payload.Note != null ? String(payload.Note) : "",
     status: payload && payload.Status != null ? String(payload.Status) : "",
