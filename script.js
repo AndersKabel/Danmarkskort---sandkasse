@@ -2001,8 +2001,10 @@ function addClearButton(inputElement, listElement) {
         document.getElementById("statsvejInfoBox").style.display = "none";
         document.getElementById("kommuneOverlay").style.display = "none";
 
-        if (!keepMarkersEnabled && currentMarker) {
-          map.removeLayer(currentMarker);
+                if (!shouldPreserveSelectionMarker() && currentMarker) {
+          if (map.hasLayer(currentMarker)) {
+            map.removeLayer(currentMarker);
+          }
           currentMarker = null;
         }
       }
