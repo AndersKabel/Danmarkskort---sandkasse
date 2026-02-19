@@ -2962,7 +2962,6 @@ function doSearch(query, listElement) {
                   }
                 })
                 .catch(err => console.error("Reverse geocoding fejl:", err));
-              updateInfoBox(addressData, lat, lon);
               resultsList.innerHTML = "";
               resultsList.style.display = "none";
               vej1List.innerHTML = "";
