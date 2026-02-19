@@ -3877,16 +3877,13 @@ console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.H
 
       attachSharePointMarkerBehaviors(marker);
 
-      // Popup: vis ikke "sp_..."-agtige titler hvis worker har sat Title = markerId
-      const title =
-        (f.Title && String(f.Title).trim() !== "" && !String(f.Title).startsWith("sp_"))
-          ? String(f.Title)
-          : "Markør";
+            // Popup: vis kun adresse + note (ingen Title)
+      const addr = f.AddressText != null ? String(f.AddressText) : "";
+      const note = f.Note != null ? String(f.Note) : "";
 
       marker.bindPopup(`
-        <strong>${title}</strong><br>
-        ${f.AddressText || ""}<br>
-        ${f.Note || ""}
+        ${addr ? `<strong>${addr}</strong><br>` : ""}
+        ${note ? `${note}` : ""}
       `);
     });
 
