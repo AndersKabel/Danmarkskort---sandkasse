@@ -3454,7 +3454,7 @@ const SP_MAP_ID = "default";
 
 // OBS: Hvis sitet er offentligt, er denne key synlig i browseren.
 // Brug den primært som "anti-misuse" – ikke som hemmelig sikkerhed.
-const SP_API_KEY = "INDSÆT_DIN_API_KEY_HER";
+const SP_API_KEY = "Fw62huch0926";
 
 // ===============================
 // Save/Delete marker to SharePoint (via Worker)
