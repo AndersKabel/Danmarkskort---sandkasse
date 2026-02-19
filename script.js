@@ -3493,10 +3493,18 @@ async function saveSharePointMarker(payload) {
   return data || { ok: true };
 }
 
-async function deleteSharePointMarker(itemId) {
-  // OBS: Denne forudsætter at din worker understøtter DELETE /markers/:id
-  const url = `https://danmarkskort-sp.anderskabel8.workers.dev/markers/${encodeURIComponent(itemId)}?workspace=Test&mapId=default`;
-  const resp = await fetch(url, { method: "DELETE" });
+async function deleteSharePointMarker(markerId) {
+  const url =
+    `${SP_WORKER_BASE}/markers/${encodeURIComponent(String(markerId))}` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+
+  const resp = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "X-API-Key": SP_API_KEY
+    }
+  });
 
   let data = null;
   try { data = await resp.json(); } catch (e) {}
