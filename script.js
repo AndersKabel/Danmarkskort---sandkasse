@@ -3832,6 +3832,7 @@ async function deleteSharePointMarker(markerId) {
 // ===============================
 // Load markers from SharePoint (via Worker) - COOKIE AUTH
 // ===============================
+
 async function loadSharePointMarkers() {
   try {
     const response = await spFetch(
@@ -3850,6 +3851,16 @@ async function loadSharePointMarkers() {
 
     console.log("Loaded markers:", data);
 
+    // Lille helper til at undgå at Note/AddressText kan ødelægge HTML i popup
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     (data.items || []).forEach(item => {
       const f = item.fields || {};
 
@@ -3863,15 +3874,11 @@ async function loadSharePointMarkers() {
 
       if (!marker._meta) marker._meta = {};
       marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
-            marker._meta._spItemId = item.id || item.itemId || null;
+      marker._meta._spItemId = item.id || item.itemId || null;
       marker._meta.note = f.Note != null ? String(f.Note) : "";
 
-      // Gem addressText deterministisk (bruges bl.a. af note-opdatering)
-      marker._meta.addressText = f.AddressText != null ? String(f.AddressText) : "";
-
-      // Tooltip hvis vi har tekst
-      if (marker._meta.addressText) {
-        setMarkerHoverAddress(marker, marker._meta.addressText);
+      if (f.AddressText) {
+        setMarkerHoverAddress(marker, String(f.AddressText));
       }
 
       if (marker._meta._spMarkerId) {
@@ -3883,11 +3890,22 @@ async function loadSharePointMarkers() {
 
       attachSharePointMarkerBehaviors(marker);
 
-      marker.bindPopup(`
-        <strong>${f.Title || "Markør"}</strong><br>
-        ${f.AddressText || ""}<br>
-        ${f.Note || ""}
-      `);
+      // POPUP: Vis IKKE markerId-agtig Title.
+      const addressText = (f.AddressText != null ? String(f.AddressText).trim() : "");
+      const titleRaw = (f.Title != null ? String(f.Title).trim() : "");
+      const titleLooksLikeMarkerId = titleRaw.startsWith("sp_");
+
+      const headline =
+        addressText ||
+        (!titleLooksLikeMarkerId && titleRaw ? titleRaw : "Markør");
+
+      const noteText = (f.Note != null ? String(f.Note).trim() : "");
+
+      const popupHtml =
+        `<strong>${escapeHtml(headline)}</strong>` +
+        (noteText ? `<div style="margin-top:6px; white-space:pre-wrap;">${escapeHtml(noteText)}</div>` : "");
+
+      marker.bindPopup(popupHtml);
     });
 
   } catch (err) {
