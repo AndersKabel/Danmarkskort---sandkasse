@@ -3564,7 +3564,8 @@ async function loadSharePointMarkers() {
 sharePointMarkersLayer.addLayer(marker);
       // Gem SharePoint item-id på markøren (så højreklik kan slette server-side)
       if (!marker._meta) marker._meta = {};
-      marker._meta._spItemId = item.id || item.itemId || f.Id || f.ID || null;
+            marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
+      marker._meta._spItemId = item.id || item.itemId || null;
 
       attachSharePointMarkerBehaviors(marker);
 
