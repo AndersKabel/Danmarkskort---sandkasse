@@ -1037,6 +1037,74 @@ var chargeMapLayer = L.layerGroup();
 // SharePoint-markører (vises kun når overlay aktiveres)
 var sharePointMarkersLayer = L.layerGroup();
 var sharePointMarkersLoaded = false; // så vi ikke loader igen og igen
+// NYT: SharePoint-tilstand (når overlayet "SharePoint markører" er aktivt)
+var sharePointModeEnabled = false;
+
+/**
+ * Hjælper: skal vi bevare currentMarker ved UI-ryd/close?
+ * - true når "Behold markører" eller "SharePoint markører" er aktivt
+ */
+function shouldPreserveSelectionMarker() {
+  return !!(keepMarkersEnabled || sharePointModeEnabled);
+}
+
+/**
+ * SharePoint marker-behavior:
+ * - højreklik => slet markør (og slet i SharePoint hvis vi har itemId)
+ * - klik => genåbn infoboks (hvis vi har gemte meta-data)
+ */
+function attachSharePointMarkerBehaviors(marker) {
+  if (!marker) return;
+  if (marker._spBehaviorsAttached) return;
+  marker._spBehaviorsAttached = true;
+
+  marker.on("contextmenu", async function () {
+    if (!sharePointModeEnabled) return;
+
+    const ok = confirm("Slet denne SharePoint-markør?");
+    if (!ok) return;
+
+    // Slet i SharePoint hvis vi har item-id
+    try {
+      const itemId = marker?._meta?._spItemId || marker?._spItemId || null;
+      if (itemId) {
+        await deleteSharePointMarker(itemId);
+      }
+    } catch (e) {
+      console.warn("Kunne ikke slette SharePoint-item (fortsætter med at fjerne lokalt):", e);
+    }
+
+    // Fjern lokalt
+    if (sharePointMarkersLayer && sharePointMarkersLayer.hasLayer(marker)) {
+      sharePointMarkersLayer.removeLayer(marker);
+    } else if (map && map.hasLayer(marker)) {
+      map.removeLayer(marker);
+    }
+
+    if (currentMarker === marker) currentMarker = null;
+
+    if (activeInfoMarker === marker) {
+      document.getElementById("infoBox").style.display = "none";
+      document.getElementById("statsvejInfoBox").style.display = "none";
+      document.getElementById("kommuneOverlay").style.display = "none";
+      resetCoordinateBox();
+      setActiveInfoMarker(null);
+    }
+  });
+
+  marker.on("click", function () {
+    const latlng = marker.getLatLng();
+    if (marker._meta && marker._meta.dkReverseData) {
+      updateInfoBox(marker._meta.dkReverseData, latlng.lat, latlng.lng);
+      setActiveInfoMarker(marker);
+    } else if (marker._meta && marker._meta.foreignFeature) {
+      updateInfoBoxForeign(marker._meta.foreignFeature, latlng.lat, latlng.lng);
+      setActiveInfoMarker(marker);
+    } else {
+      setActiveInfoMarker(marker);
+    }
+  });
+}
 
 // NYT: lag til at samle ekstra markører, når "Behold markører" er slået til
 var keepMarkersLayer   = L.layerGroup();
