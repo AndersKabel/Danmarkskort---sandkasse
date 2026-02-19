@@ -3489,24 +3489,84 @@ document.addEventListener("DOMContentLoaded", function() {
   
 });
 // ===============================
-// SharePoint Worker config
+// SharePoint Worker config (COOKIE AUTH)
 // ===============================
 const SP_WORKER_BASE = "https://danmarkskort-sp.anderskabel8.workers.dev";
 const SP_WORKSPACE = "Test";
 const SP_MAP_ID = "default";
 
-// OBS: Hvis sitet er offentligt, er denne key synlig i browseren.
-// Brug den primært som "anti-misuse" – ikke som hemmelig sikkerhed.
-const SP_API_KEY = "Fw62huch0926";
+// ===============================
+// SharePoint auth/session helpers
+// ===============================
+let spLoginInProgress = false;
 
-// ===============================
-// Save/Delete marker to SharePoint (via Worker)
-// ===============================
+/**
+ * Sikrer at vi har en gyldig session-cookie i browseren.
+ * Vi gemmer IKKE koden nogen steder.
+ */
+async function spEnsureLoggedIn() {
+  if (spLoginInProgress) return false;
+  spLoginInProgress = true;
+
+  try {
+    // Hurtig test: er vi allerede logget ind?
+    try {
+      const meResp = await fetch(`${SP_WORKER_BASE}/auth/me`, {
+        method: "GET",
+        credentials: "include"
+      });
+      if (meResp.ok) return true;
+    } catch (e) {}
+
+    const code = prompt("Indtast adgangskoden til SharePoint-markører:");
+    if (!code || !code.trim()) return false;
+
+    const loginResp = await fetch(`${SP_WORKER_BASE}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.trim() })
+    });
+
+    if (!loginResp.ok) {
+      alert("Forkert kode eller login fejlede.");
+      return false;
+    }
+
+    return true;
+  } finally {
+    spLoginInProgress = false;
+  }
+}
+
+/**
+ * Wrapper til kald mod worker som:
+ * - sender cookies (credentials: include)
+ * - hvis 401 => spørger efter kode og retry én gang
+ */
+async function spFetch(path, options) {
+  const url = `${SP_WORKER_BASE}${path}`;
+
+  const opts = Object.assign({}, options || {});
+  opts.credentials = "include";
+
+  if (!opts.headers) opts.headers = {};
+
+  let resp = await fetch(url, opts);
+
+  if (resp.status === 401) {
+    const ok = await spEnsureLoggedIn();
+    if (!ok) return resp;
+
+    resp = await fetch(url, opts);
+  }
+
+  return resp;
+}
+
 // ===============================
 // SharePoint dedupe helpers (stable markerId + in-memory index)
 // ===============================
-
-// In-memory index: markerId -> marker + itemId (bruges til dedupe og opdatering)
 const spMarkerIndex = new Map();
 
 /**
@@ -3526,148 +3586,7 @@ function makeStableMarkerId(lat, lon, decimals = 5) {
 
   return `sp_${ws}_${mid}_${latFixed}_${lonFixed}`;
 }
-async function saveSharePointMarker(payload) {
-  const url =
-    `${SP_WORKER_BASE}/markers` +
-    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
-    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
-
-  // Worker forventer: markerId, workspace, mapId, lat, lon, addressText, note (mv.)
-  // Vi mapper fra din nuværende payload (Lat/Lon/AddressText/Note) til worker-format.
-    const latVal = payload && typeof payload.Lat === "number" ? payload.Lat : Number(payload?.Lat);
-  const lonVal = payload && typeof payload.Lon === "number" ? payload.Lon : Number(payload?.Lon);
-
-  const stableId = makeStableMarkerId(latVal, lonVal, 5);
-
-  const body = {
-    // ALWAYS send markerId (idempotent)
-    markerId: (payload && payload.markerId) ? String(payload.markerId) : (stableId || undefined),
-
-    workspace: SP_WORKSPACE,
-    mapId: SP_MAP_ID,
-
-    lat: latVal,
-    lon: lonVal,
-
-    addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
-    note: payload && payload.Note != null ? String(payload.Note) : "",
-    status: payload && payload.Status != null ? String(payload.Status) : "",
-    yk: payload && payload.YK != null ? String(payload.YK) : ""
-  };
-
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": SP_API_KEY
-    },
-    body: JSON.stringify(body)
-  });
-
-  let data = null;
-  try { data = await resp.json(); } catch (e) {}
-
-  if (!resp.ok || (data && data.ok === false)) {
-    console.error("Save SharePoint marker failed:", data);
-    return { ok: false, data };
-  }
-
-  // Returnér alt vi kan bruge:
-  // - markerId (vores id)
-  // - createdItemId (SharePoint item id)
-  return data || { ok: true };
-}
-
-async function deleteSharePointMarker(markerId) {
-  const url =
-    `${SP_WORKER_BASE}/markers/${encodeURIComponent(String(markerId))}` +
-    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
-    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
-
-  const resp = await fetch(url, {
-    method: "DELETE",
-    headers: {
-      "X-API-Key": SP_API_KEY
-    }
-  });
-
-  let data = null;
-  try { data = await resp.json(); } catch (e) {}
-
-  if (!resp.ok || (data && data.ok === false)) {
-    console.error("Delete SharePoint marker failed:", data);
-    throw new Error("Delete SharePoint marker failed");
-  }
-  return data || { ok: true };
-}
 
 // ===============================
-// Load markers from SharePoint (via Worker)
-// ===============================
+// Save/Delete marker to SharePoint (via
 
-async function loadSharePointMarkers() {
-  try {
-        const response = await fetch(
-      `${SP_WORKER_BASE}/markers?workspace=${encodeURIComponent(SP_WORKSPACE)}&mapId=${encodeURIComponent(SP_MAP_ID)}`,
-      {
-        headers: {
-          "X-API-Key": SP_API_KEY
-        }
-      }
-    );
-
-    const data = await response.json();
-    // Sikkerhed: undgå dubletter hvis funktionen kaldes flere gange
-    sharePointMarkersLayer.clearLayers();
-    
-    if (!data.ok) {
-      console.error("Worker error:", data);
-      return;
-    }
-
-    console.log("Loaded markers:", data);
-
-    (data.items || []).forEach(item => {
-      const f = item.fields || {};
-
-            const lat = typeof f.Lat === "number" ? f.Lat : parseFloat(f.Lat);
-      const lon = typeof f.Lon === "number" ? f.Lon : parseFloat(f.Lon);
-
-      if (!isFinite(lat) || !isFinite(lon)) {
-        return;
-      }
-
-                  const marker = L.marker([lat, lon]);
-      sharePointMarkersLayer.addLayer(marker);
-
-      // Gem SharePoint id'er på markøren
-      if (!marker._meta) marker._meta = {};
-      marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
-      marker._meta._spItemId = item.id || item.itemId || null;
-
-      // Hover-tooltip: altid vis AddressText hvis den findes
-      if (f.AddressText) {
-        setMarkerHoverAddress(marker, String(f.AddressText));
-      }
-
-      // Opdater index (dedupe + opdatering)
-      if (marker._meta._spMarkerId) {
-        spMarkerIndex.set(marker._meta._spMarkerId, {
-          marker: marker,
-          itemId: marker._meta._spItemId
-        });
-      }
-
-      attachSharePointMarkerBehaviors(marker);
-
-      marker.bindPopup(`
-        <strong>${f.Title || "Markør"}</strong><br>
-        ${f.AddressText || ""}<br>
-        ${f.Note || ""}
-      `);
-    });
-
-  } catch (err) {
-    console.error("Load markers failed:", err);
-  }
-}
