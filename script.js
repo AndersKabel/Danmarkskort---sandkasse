@@ -1298,7 +1298,7 @@ L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
 // ===============================
 // SharePoint refresh helper + knap
 // ===============================
-function refreshSharePointMarkers() {
+async function refreshSharePointMarkersAsync() {
   // Kun refresh hvis overlayet er aktivt
   if (!map.hasLayer(sharePointMarkersLayer)) {
     alert("Tænd 'SharePoint markører' først, før du refresher.");
@@ -1311,7 +1311,7 @@ function refreshSharePointMarkers() {
 
   // Reload
   sharePointMarkersLoaded = true;
-  loadSharePointMarkers();
+  await loadSharePointMarkers();
 }
 
 // Leaflet control-knap (Refresh)
