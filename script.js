@@ -1691,8 +1691,15 @@ async function updateInfoBox(data, lat, lon) {
     if (!currentMarker._meta) currentMarker._meta = {};
     currentMarker._meta.dkReverseData = data;     // gem reverse-data
     currentMarker._meta.foreignFeature = null;    // ryd evt. udlandsdata
-    setMarkerHoverAddress(currentMarker, adresseStr);
-    attachKeepMarkerBehaviors(currentMarker);
+        setMarkerHoverAddress(currentMarker, adresseStr);
+
+    // Bind kun de relevante behaviors til den aktuelle mode
+    if (sharePointModeEnabled) {
+      attachSharePointMarkerBehaviors(currentMarker);
+    } else if (keepMarkersEnabled) {
+      attachKeepMarkerBehaviors(currentMarker);
+    }
+
     setActiveInfoMarker(currentMarker);
   }
 
