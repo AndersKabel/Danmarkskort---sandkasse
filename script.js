@@ -3897,6 +3897,9 @@ async function loadSharePointMarkers() {
 
     (data.items || []).forEach(item => {
       const f = item.fields || {};
+      console.log("[SP load] item fields keys:", Object.keys(f));
+console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.HiddenOnMap, "hiddenOnMap:", f.hiddenOnMap);
+
 
       // SKIP: skjulte ture (soft delete)
       const hidden =
