@@ -3588,5 +3588,125 @@ function makeStableMarkerId(lat, lon, decimals = 5) {
 }
 
 // ===============================
-// Save/Delete marker to SharePoint (via
+// Save/Delete marker to SharePoint (via Worker) - COOKIE AUTH
+// ===============================
+async function saveSharePointMarker(payload) {
+  const url =
+    `/markers` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
 
+  const latVal = payload && typeof payload.Lat === "number" ? payload.Lat : Number(payload?.Lat);
+  const lonVal = payload && typeof payload.Lon === "number" ? payload.Lon : Number(payload?.Lon);
+
+  const stableId = makeStableMarkerId(latVal, lonVal, 5);
+
+  const body = {
+    markerId: (payload && payload.markerId) ? String(payload.markerId) : (stableId || undefined),
+    workspace: SP_WORKSPACE,
+    mapId: SP_MAP_ID,
+    lat: latVal,
+    lon: lonVal,
+    addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
+    note: payload && payload.Note != null ? String(payload.Note) : "",
+    status: payload && payload.Status != null ? String(payload.Status) : "",
+    yk: payload && payload.YK != null ? String(payload.YK) : ""
+  };
+
+  const resp = await spFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Save SharePoint marker failed:", data);
+    return { ok: false, data };
+  }
+
+  return data || { ok: true };
+}
+
+async function deleteSharePointMarker(markerId) {
+  const url =
+    `/markers/${encodeURIComponent(String(markerId))}` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+
+  const resp = await spFetch(url, {
+    method: "DELETE"
+  });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Delete SharePoint marker failed:", data);
+    throw new Error("Delete SharePoint marker failed");
+  }
+  return data || { ok: true };
+}
+
+// ===============================
+// Load markers from SharePoint (via Worker) - COOKIE AUTH
+// ===============================
+async function loadSharePointMarkers() {
+  try {
+    const response = await spFetch(
+      `/markers?workspace=${encodeURIComponent(SP_WORKSPACE)}&mapId=${encodeURIComponent(SP_MAP_ID)}`,
+      { method: "GET" }
+    );
+
+    const data = await response.json();
+
+    sharePointMarkersLayer.clearLayers();
+
+    if (!data.ok) {
+      console.error("Worker error:", data);
+      return;
+    }
+
+    console.log("Loaded markers:", data);
+
+    (data.items || []).forEach(item => {
+      const f = item.fields || {};
+
+      const lat = typeof f.Lat === "number" ? f.Lat : parseFloat(f.Lat);
+      const lon = typeof f.Lon === "number" ? f.Lon : parseFloat(f.Lon);
+
+      if (!isFinite(lat) || !isFinite(lon)) return;
+
+      const marker = L.marker([lat, lon]);
+      sharePointMarkersLayer.addLayer(marker);
+
+      if (!marker._meta) marker._meta = {};
+      marker._meta._spMarkerId = f.MarkerId || f.markerId || null;
+      marker._meta._spItemId = item.id || item.itemId || null;
+
+      if (f.AddressText) {
+        setMarkerHoverAddress(marker, String(f.AddressText));
+      }
+
+      if (marker._meta._spMarkerId) {
+        spMarkerIndex.set(marker._meta._spMarkerId, {
+          marker: marker,
+          itemId: marker._meta._spItemId
+        });
+      }
+
+      attachSharePointMarkerBehaviors(marker);
+
+      marker.bindPopup(`
+        <strong>${f.Title || "Markør"}</strong><br>
+        ${f.AddressText || ""}<br>
+        ${f.Note || ""}
+      `);
+    });
+
+  } catch (err) {
+    console.error("Load markers failed:", err);
+  }
+}
