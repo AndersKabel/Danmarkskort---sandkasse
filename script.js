@@ -3654,16 +3654,29 @@ async function saveSharePointMarker(payload) {
 
   const stableId = makeStableMarkerId(latVal, lonVal, 5);
 
+  // Title: forsøg at sende en pæn titel (så vi undgår sp_... i UI)
+  const titleText =
+    (payload && payload.Title != null && String(payload.Title).trim() !== "")
+      ? String(payload.Title).trim()
+      : "Markør";
+
+  // VIGTIGT:
+  // Når man gemmer en markør (ved adressevalg), skal den altid være synlig på kortet.
+  // Derfor tvinger vi HiddenOnMap=false her, så en tidligere "skjult" tur kan gendannes.
   const body = {
     markerId: (payload && payload.markerId) ? String(payload.markerId) : (stableId || undefined),
     workspace: SP_WORKSPACE,
     mapId: SP_MAP_ID,
     lat: latVal,
     lon: lonVal,
+    title: titleText,
+    Title: titleText, // send begge for kompatibilitet
     addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
     note: payload && payload.Note != null ? String(payload.Note) : "",
     status: payload && payload.Status != null ? String(payload.Status) : "",
-    yk: payload && payload.YK != null ? String(payload.YK) : ""
+    yk: payload && payload.YK != null ? String(payload.YK) : "",
+    hiddenOnMap: false,
+    HiddenOnMap: false
   };
 
   const resp = await spFetch(url, {
