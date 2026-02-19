@@ -1064,7 +1064,7 @@ function attachSharePointMarkerBehaviors(marker) {
     const ok = confirm("Slet denne SharePoint-markør?");
     if (!ok) return;
 
-        // Slet i SharePoint hvis vi har MarkerId (option A)
+    // Slet i SharePoint hvis vi har MarkerId (option A)
     try {
       const markerId =
         marker?._meta?._spMarkerId ||
@@ -1097,16 +1097,66 @@ function attachSharePointMarkerBehaviors(marker) {
     }
   });
 
-  marker.on("click", function () {
+  // Klik på SharePoint-markør skal opføre sig som ved ny adresse (billede 2):
+  // - vise infoBox
+  // - binde note-feltet til markøren
+  // - reverse-geocode DK hvis vi ikke allerede har data
+  marker.on("click", async function () {
     const latlng = marker.getLatLng();
+
+    // Sæt den som "aktuel" så updateInfoBox binder note-felt, hover osv.
+    currentMarker = marker;
+    setActiveInfoMarker(marker);
+
+    // Hvis vi allerede har reverse-data, så vis dem direkte
     if (marker._meta && marker._meta.dkReverseData) {
-      updateInfoBox(marker._meta.dkReverseData, latlng.lat, latlng.lng);
-      setActiveInfoMarker(marker);
-    } else if (marker._meta && marker._meta.foreignFeature) {
+      await updateInfoBox(marker._meta.dkReverseData, latlng.lat, latlng.lng);
+
+      // Sørg for at note-feltet viser markørens note (SharePoint)
+      const ta = document.getElementById("markerNote");
+      if (ta && marker._meta) ta.value = marker._meta.note || "";
+      return;
+    }
+
+    // Hvis markøren har udlands-data (edge case), så brug foreign UI
+    if (marker._meta && marker._meta.foreignFeature) {
       updateInfoBoxForeign(marker._meta.foreignFeature, latlng.lat, latlng.lng);
-      setActiveInfoMarker(marker);
-    } else {
-      setActiveInfoMarker(marker);
+
+      const ta = document.getElementById("markerNote");
+      if (ta && marker._meta) ta.value = marker._meta.note || "";
+      return;
+    }
+
+    // Ellers: hent reverse-data og vis fuld info UI
+    try {
+      const lat = latlng.lat;
+      const lon = latlng.lng;
+
+      if (isInDenmarkByPolygon(lat, lon)) {
+        const revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+        const r = await fetch(revUrl);
+        const data = await r.json();
+
+        await updateInfoBox(data, lat, lon);
+
+        // Forfyld note-feltet med SharePoint-noten
+        const ta = document.getElementById("markerNote");
+        if (ta && marker._meta) ta.value = marker._meta.note || "";
+      } else {
+        const feat = await reverseGeocodeORS(lat, lon);
+        if (feat) {
+          if (!marker._meta) marker._meta = {};
+          marker._meta.foreignFeature = feat;
+          updateInfoBoxForeign(feat, lat, lon);
+
+          const ta = document.getElementById("markerNote");
+          if (ta && marker._meta) ta.value = marker._meta.note || "";
+        }
+      }
+    } catch (e) {
+      console.warn("Kunne ikke reverse-geocode ved klik på SharePoint-markør:", e);
+      const infoBox = document.getElementById("infoBox");
+      if (infoBox) infoBox.style.display = "block";
     }
   });
 }
