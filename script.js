@@ -3459,6 +3459,30 @@ const SP_API_KEY = "Fw62huch0926";
 // ===============================
 // Save/Delete marker to SharePoint (via Worker)
 // ===============================
+// ===============================
+// SharePoint dedupe helpers (stable markerId + in-memory index)
+// ===============================
+
+// In-memory index: markerId -> marker + itemId (bruges til dedupe og opdatering)
+const spMarkerIndex = new Map();
+
+/**
+ * Stabilt MarkerId baseret på workspace+mapId+lat/lon (afrundet)
+ * decimals=5 => ca. 1m præcision
+ */
+function makeStableMarkerId(lat, lon, decimals = 5) {
+  const latNum = Number(lat);
+  const lonNum = Number(lon);
+  if (!isFinite(latNum) || !isFinite(lonNum)) return null;
+
+  const latFixed = latNum.toFixed(decimals);
+  const lonFixed = lonNum.toFixed(decimals);
+
+  const ws = String(SP_WORKSPACE || "").trim();
+  const mid = String(SP_MAP_ID || "").trim();
+
+  return `sp_${ws}_${mid}_${latFixed}_${lonFixed}`;
+}
 async function saveSharePointMarker(payload) {
   const url =
     `${SP_WORKER_BASE}/markers` +
