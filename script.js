@@ -1978,9 +1978,11 @@ function addClearButton(inputElement, listElement) {
     document.getElementById("statsvejInfoBox").style.display = "none";
     document.getElementById("kommuneOverlay").style.display = "none";
 
-    // Fjern markør – med respekt for "Behold markører"
-    if (!keepMarkersEnabled && currentMarker) {
-      map.removeLayer(currentMarker);
+        // Fjern markør – med respekt for "Behold markører" og "SharePoint markører"
+    if (!shouldPreserveSelectionMarker() && currentMarker) {
+      if (map.hasLayer(currentMarker)) {
+        map.removeLayer(currentMarker);
+      }
       currentMarker = null;
     }
   });
