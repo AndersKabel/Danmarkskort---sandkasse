@@ -3745,6 +3745,48 @@ function queueSharePointNoteUpdate(marker, newNote) {
     }
   }, 600);
 }
+/**
+ * Opdater felter på en eksisterende SharePoint-markør via worker.
+ * Vi bruger PATCH /markers/{markerId}
+ */
+async function updateSharePointMarker(markerId, patch) {
+  const url =
+    `/markers/${encodeURIComponent(String(markerId))}` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+
+  const body = Object.assign({}, patch || {});
+
+  // Sørg for at hiddenOnMap sendes som bool (worker normaliserer også)
+  if (typeof body.hiddenOnMap !== "undefined") {
+    body.hiddenOnMap = !!body.hiddenOnMap;
+    body.HiddenOnMap = !!body.hiddenOnMap; // send begge for kompat
+  }
+  if (typeof body.note !== "undefined") {
+    body.note = body.note != null ? String(body.note) : "";
+    body.Note = body.note;
+  }
+  if (typeof body.addressText !== "undefined") {
+    body.addressText = body.addressText != null ? String(body.addressText) : "";
+    body.AddressText = body.addressText;
+  }
+
+  const resp = await spFetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Update SharePoint marker failed:", data);
+    throw new Error("Update SharePoint marker failed");
+  }
+
+  return data || { ok: true };
+}
 
 async function deleteSharePointMarker(markerId) {
   const url =
