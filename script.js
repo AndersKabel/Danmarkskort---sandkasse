@@ -1414,7 +1414,16 @@ map.on('overlayadd', function(e) {
       });
     })
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
-      } else if (e.layer === sharePointMarkersLayer) {
+
+  } else if (e.layer === sharePointMarkersLayer) {
+    // SharePoint-mode ON
+    sharePointModeEnabled = true;
+
+    // Vis refresh-knap kun når SharePoint overlay er aktivt
+    if (spRefreshControl && spRefreshControl._container) {
+      spRefreshControl._container.style.display = "block";
+    }
+
     // Når brugeren slår overlayet til, loader vi markører én gang
     if (!sharePointMarkersLoaded) {
       sharePointMarkersLoaded = true;
@@ -1424,21 +1433,17 @@ map.on('overlayadd', function(e) {
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
     keepMarkersEnabled = true;
-        // Vis SharePoint refresh-knappen kun når "Behold markører" er aktivt
-    if (spRefreshControl && spRefreshControl._container) {
-      spRefreshControl._container.style.display = "block";
-    }
 
     // Hvis der allerede findes en aktuel markør, flyttes den over i laget
-      if (currentMarker) {
-    if (map.hasLayer(currentMarker)) {
-      map.removeLayer(currentMarker);
-    }
-    keepMarkersLayer.addLayer(currentMarker);
+    if (currentMarker) {
+      if (map.hasLayer(currentMarker)) {
+        map.removeLayer(currentMarker);
+      }
+      keepMarkersLayer.addLayer(currentMarker);
 
-    // Sørg for højreklik-slet / klik-genåbn også på den markør
-    attachKeepMarkerBehaviors(currentMarker);
-  }
+      // Sørg for højreklik-slet / klik-genåbn også på den markør
+      attachKeepMarkerBehaviors(currentMarker);
+    }
   }
 });
 
