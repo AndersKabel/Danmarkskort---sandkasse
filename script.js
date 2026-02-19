@@ -3700,83 +3700,114 @@ async function saveSharePointMarker(payload) {
  * Forventer at worker understøtter PATCH (eller PUT) på /markers/{markerId}.
  * Fallback: hvis PATCH fejler, prøver vi POST (upsert) med samme markerId.
  */
-async function updateSharePointMarker(markerId, fieldsObj) {
-  const id = String(markerId || "").trim();
-  if (!id) throw new Error("updateSharePointMarker: missing markerId");
+function attachSharePointMarkerBehaviors(marker) {
+  if (!marker) return;
+  if (marker._spBehaviorsAttached) return;
+  marker._spBehaviorsAttached = true;
 
-  // Primær: PATCH /markers/{markerId}
-  const patchUrl =
-    `/markers/${encodeURIComponent(id)}` +
-    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
-    `&mapId=${encodeURIComponent(SP_MAP_ID)}`;
+  marker.on("contextmenu", async function () {
+    if (!sharePointModeEnabled) return;
 
-  // Vi sender kun de felter vi vil opdatere (fx { note: "..." })
-  const patchBody = Object.assign({}, fieldsObj || {}, {
-    markerId: id,
-    workspace: SP_WORKSPACE,
-    mapId: SP_MAP_ID
-  });
+    const ok = confirm("Skjul denne tur på kortet?\n\n(Det slettes IKKE i SharePoint – den bliver kun skjult ved load/refresh.)");
+    if (!ok) return;
 
-  let resp = await spFetch(patchUrl, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patchBody)
-  });
+    try {
+      const markerId =
+        marker?._meta?._spMarkerId ||
+        marker?._meta?._spMarkerID ||
+        marker?._spMarkerId ||
+        null;
 
-  // Hvis worker ikke accepterer PATCH, prøv PUT som sekundær
-  if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-    resp = await spFetch(patchUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patchBody)
-    });
-  }
-
-  // Hvis stadig ikke ok: fallback til POST "upsert" med samme markerId
-  if (!resp.ok) {
-    const body = {
-      markerId: id,
-      workspace: SP_WORKSPACE,
-      mapId: SP_MAP_ID,
-      lat: Number(fieldsObj?.lat),
-      lon: Number(fieldsObj?.lon),
-      addressText: fieldsObj?.addressText != null ? String(fieldsObj.addressText) : "",
-      note: fieldsObj?.note != null ? String(fieldsObj.note) : "",
-      status: fieldsObj?.status != null ? String(fieldsObj.status) : "",
-      yk: fieldsObj?.yk != null ? String(fieldsObj.yk) : ""
-    };
-
-    // Hvis lat/lon ikke er med, tager vi dem fra currentMarker
-    if ((!isFinite(body.lat) || !isFinite(body.lon)) && currentMarker) {
-      const ll = currentMarker.getLatLng();
-      body.lat = ll.lat;
-      body.lon = ll.lng;
-    }
-
-    const upsertResp = await spFetch(
-      `/markers?workspace=${encodeURIComponent(SP_WORKSPACE)}&mapId=${encodeURIComponent(SP_MAP_ID)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+      if (markerId) {
+        const ll = marker.getLatLng();
+        await updateSharePointMarker(markerId, {
+          hiddenOnMap: true,
+          lat: ll.lat,
+          lon: ll.lng,
+          addressText: marker?._meta?.addressText || "",
+          note: marker?._meta?.note || ""
+        });
+      } else {
+        console.warn("Kunne ikke skjule i SharePoint: marker mangler markerId (skjuler kun lokalt).");
       }
-    );
-
-    let upsertData = null;
-    try { upsertData = await upsertResp.json(); } catch (e) {}
-
-    if (!upsertResp.ok || (upsertData && upsertData.ok === false)) {
-      throw new Error("updateSharePointMarker failed (PATCH/PUT + POST fallback)");
+    } catch (e) {
+      console.warn("Kunne ikke skjule i SharePoint (fortsætter med at fjerne lokalt):", e);
     }
-    return upsertData || { ok: true };
-  }
 
-  let data = null;
-  try { data = await resp.json(); } catch (e) {}
-  if (data && data.ok === false) throw new Error("updateSharePointMarker worker returned ok:false");
-  return data || { ok: true };
+    // Fjern lokalt
+    if (sharePointMarkersLayer && sharePointMarkersLayer.hasLayer(marker)) {
+      sharePointMarkersLayer.removeLayer(marker);
+    } else if (map && map.hasLayer(marker)) {
+      map.removeLayer(marker);
+    }
+
+    // Ryd selection hvis nødvendig
+    if (currentMarker === marker) currentMarker = null;
+
+    if (activeInfoMarker === marker) {
+      document.getElementById("infoBox").style.display = "none";
+      document.getElementById("statsvejInfoBox").style.display = "none";
+      document.getElementById("kommuneOverlay").style.display = "none";
+      resetCoordinateBox();
+      setActiveInfoMarker(null);
+    }
+  });
+
+  // Klik på SharePoint-markør skal opføre sig som ved ny adresse (billede 2):
+  // - vise infoBox
+  // - binde note-feltet til markøren
+  // - reverse-geocode DK hvis vi ikke allerede har data
+  marker.on("click", async function () {
+    const latlng = marker.getLatLng();
+
+    currentMarker = marker;
+    setActiveInfoMarker(marker);
+
+    if (marker._meta && marker._meta.dkReverseData) {
+      await updateInfoBox(marker._meta.dkReverseData, latlng.lat, latlng.lng);
+      const ta = document.getElementById("markerNote");
+      if (ta && marker._meta) ta.value = marker._meta.note || "";
+      return;
+    }
+
+    if (marker._meta && marker._meta.foreignFeature) {
+      updateInfoBoxForeign(marker._meta.foreignFeature, latlng.lat, latlng.lng);
+      const ta = document.getElementById("markerNote");
+      if (ta && marker._meta) ta.value = marker._meta.note || "";
+      return;
+    }
+
+    try {
+      const lat = latlng.lat;
+      const lon = latlng.lng;
+
+      if (isInDenmarkByPolygon(lat, lon)) {
+        const revUrl = `https://api.dataforsyningen.dk/adgangsadresser/reverse?x=${lon}&y=${lat}&struktur=flad`;
+        const r = await fetch(revUrl);
+        const data = await r.json();
+
+        await updateInfoBox(data, lat, lon);
+
+        const ta = document.getElementById("markerNote");
+        if (ta && marker._meta) ta.value = marker._meta.note || "";
+      } else {
+        const feat = await reverseGeocodeORS(lat, lon);
+        if (feat) {
+          if (!marker._meta) marker._meta = {};
+          marker._meta.foreignFeature = feat;
+          updateInfoBoxForeign(feat, lat, lon);
+
+          const ta = document.getElementById("markerNote");
+          if (ta && marker._meta) ta.value = marker._meta.note || "";
+        }
+      }
+    } catch (e) {
+      console.warn("Kunne ikke reverse-geocode ved klik på SharePoint-markør:", e);
+      const infoBox = document.getElementById("infoBox");
+      if (infoBox) infoBox.style.display = "block";
+    }
+  });
 }
-
 /**
  * Debounced note-update til SharePoint for en given marker.
  * Lægger timer på marker._meta så hver markør har sin egen debounce.
