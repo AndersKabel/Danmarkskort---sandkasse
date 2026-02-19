@@ -2087,8 +2087,10 @@ searchInput.addEventListener("input", function() {
   // Ny søgning: skjul info-bokse, marker mv.
   document.getElementById("infoBox").style.display = "none";
   document.getElementById("statsvejInfoBox").style.display = "none";
-  if (!keepMarkersEnabled && currentMarker) {
-    map.removeLayer(currentMarker);
+    if (!shouldPreserveSelectionMarker() && currentMarker) {
+    if (map.hasLayer(currentMarker)) {
+      map.removeLayer(currentMarker);
+    }
     currentMarker = null;
   }
   resetCoordinateBox();
