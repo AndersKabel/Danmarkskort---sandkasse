@@ -1126,6 +1126,58 @@ function setActiveInfoMarker(marker) {
 }
 
 /**
+ * HTML-escape (note/adresse kan komme fra brugeren)
+ */
+function escapeHtml(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Opdater marker-tooltip så den viser adresse + note (hvis note findes)
+ */
+function updateMarkerTooltip(marker) {
+  if (!marker) return;
+  if (!marker._meta) marker._meta = {};
+
+  const addr = (marker._meta.addressText || "").trim();
+  const note = (marker._meta.note || "").trim();
+
+  // Hvis intet at vise -> fjern tooltip (hvis den findes)
+  if (!addr && !note) {
+    if (marker._meta._tooltipBound) {
+      try { marker.unbindTooltip(); } catch (e) {}
+      marker._meta._tooltipBound = false;
+    }
+    return;
+  }
+
+  // Build HTML (Leaflet tooltip accepterer HTML)
+  let html = "";
+  if (addr) html += `<strong>${escapeHtml(addr)}</strong>`;
+  if (note) html += `${addr ? "<br>" : ""}${escapeHtml(note)}`;
+
+  if (!marker._meta._tooltipBound) {
+    marker.bindTooltip(html, { sticky: true, direction: "top" });
+    marker._meta._tooltipBound = true;
+  } else {
+    try {
+      marker.setTooltipContent(html);
+    } catch (e) {
+      try {
+        marker.unbindTooltip();
+        marker.bindTooltip(html, { sticky: true, direction: "top" });
+        marker._meta._tooltipBound = true;
+      } catch (e2) {}
+    }
+  }
+}
+
+/**
  * Sæt/Opdatér tooltip med adresse for hover
  */
 function setMarkerHoverAddress(marker, addressText) {
