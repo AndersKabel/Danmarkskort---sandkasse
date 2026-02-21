@@ -1041,6 +1041,11 @@ var sharePointMarkersLoaded = false; // så vi ikke loader igen og igen
 var spRefreshControl = null;
 // NYT: SharePoint-tilstand (afledt af om overlayet faktisk er aktivt)
 var sharePointModeEnabled = false;
+// SharePoint Undo UI (DOM refs sættes senere når DOM er klar)
+var spUndoBar = null;
+var spUndoBtn = null;
+var spUndoRange = null;
+var spUndoStatus = null;
 
 /**
  * Robust check: er SharePoint overlayet aktivt lige nu?
