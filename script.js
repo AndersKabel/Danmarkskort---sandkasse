@@ -2924,7 +2924,7 @@ function doSearch(query, listElement) {
     updateInfoBox(reverseData, lat, lon);
 
     // Hvis SharePoint overlay er aktivt => gem markøren i SharePoint
-    if (sharePointModeEnabled) {
+    if (isSharePointOverlayActive()) {
       const addressText =
         reverseData?.adgangsadresse?.adressebetegnelse ||
         reverseData?.adressebetegnelse ||
