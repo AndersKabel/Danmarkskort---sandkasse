@@ -3730,9 +3730,9 @@ function attachSharePointMarkerBehaviors(marker) {
  * Lægger timer på marker._meta så hver markør har sin egen debounce.
  */
 function queueSharePointNoteUpdate(marker, newNote) {
-  if (!sharePointModeEnabled) return;
+  if (!isSharePointOverlayActive()) return;
   if (!marker) return;
-
+  
   if (!marker._meta) marker._meta = {};
   const markerId =
     marker._meta._spMarkerId ||
