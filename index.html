@@ -38,14 +38,14 @@
     <div id="search-container">
       <!-- ØVERSTE LINJE: Hoved-søg + Rute-knap -->
       <div class="flex-row">
-  <div class="search-wrapper">
-    <input type="text" id="search" placeholder="Søg efter adresse eller sted...">
-    <span class="clear-button" id="clearSearch">&times;</span>
-  </div>
-  <button id="routeToggleBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
-    Rute
-  </button>
-</div>
+        <div class="search-wrapper">
+          <input type="text" id="search" placeholder="Søg efter adresse eller sted...">
+          <span class="clear-button" id="clearSearch">&times;</span>
+        </div>
+        <button id="routeToggleBtn" style="width:80px; height:40px; font-size:14px; cursor:pointer;">
+          Rute
+        </button>
+      </div>
         
       <!-- Udland-checkbox under søgefeltet -->
       <div class="search-options-row">
@@ -56,10 +56,26 @@
         <span class="search-hint">
           Sæt flueben for at søge på udenlandske adresser
         </span>
-          <span id="orsGeocodeQuota" class="ors-quota-indicator"></span>
+        <span id="orsGeocodeQuota" class="ors-quota-indicator"></span>
       </div>
 
       <ul id="results"></ul>
+
+      <!-- SharePoint: Undo soft-delete (vises kun når SharePoint-lag er aktivt) -->
+      <div id="spUndoBar" class="sp-undo-bar hidden">
+        <div class="sp-undo-row">
+          <span class="sp-undo-title">Fortryd slet:</span>
+          <button id="spUndoBtn" type="button">Gendan</button>
+        </div>
+        <div class="sp-undo-row">
+          <label for="spUndoRange">Periode:</label>
+          <select id="spUndoRange">
+            <option value="hour" selected>Sidste time</option>
+            <option value="day">Hele dagen</option>
+          </select>
+          <span id="spUndoStatus" class="sp-undo-status"></span>
+        </div>
+      </div>
 
       <!-- RUTE-PANEL: Fra / Til / Via + Start/Ryd + indstillinger -->
       <div id="routePanel" class="hidden">
@@ -148,11 +164,11 @@
           <p id="address"></p>
           <p id="extra-info"></p>
           <div id="markerNoteWrapper" style="display:none; margin-top:8px;">
-  <label for="markerNote" style="display:block; font-size:13px; color:#555; margin-bottom:4px;">
-    Note (gemmes på markøren)
-  </label>
-  <textarea id="markerNote" rows="2" placeholder="Skriv tekst eller tal..."></textarea>
-</div>
+            <label for="markerNote" style="display:block; font-size:13px; color:#555; margin-bottom:4px;">
+              Note (gemmes på markøren)
+            </label>
+            <textarea id="markerNote" rows="2" placeholder="Skriv tekst eller tal..."></textarea>
+          </div>
         </div>
         <span id="infoCloseBtn" class="close-button">&times;</span>
       </div>
