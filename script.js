@@ -3623,7 +3623,7 @@ function attachSharePointMarkerBehaviors(marker) {
   marker._spBehaviorsAttached = true;
 
   marker.on("contextmenu", async function () {
-    if (!sharePointModeEnabled) return;
+    if (!isSharePointOverlayActive()) return;
 
     const ok = confirm("Skjul denne tur på kortet?\n\n(Det slettes IKKE i SharePoint – den bliver kun skjult ved load/refresh.)");
     if (!ok) return;
