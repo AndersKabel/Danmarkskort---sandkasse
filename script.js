@@ -3657,10 +3657,13 @@ function attachSharePointMarkerBehaviors(marker) {
   if (marker._spBehaviorsAttached) return;
   marker._spBehaviorsAttached = true;
 
-  marker.on("contextmenu", async function () {
+    marker.on("contextmenu", async function () {
     if (!isSharePointOverlayActive()) return;
 
-    const ok = confirm("Skjul denne tur på kortet?\n\n(Det slettes IKKE i SharePoint – den bliver kun skjult ved load/refresh.)");
+    const ok = confirm(
+      "Skjul denne tur på kortet?\n\n" +
+      "Dette laver en soft-delete i SharePoint (HiddenOnMap=true + DeletedAt=nu)."
+    );
     if (!ok) return;
 
     try {
@@ -3671,19 +3674,13 @@ function attachSharePointMarkerBehaviors(marker) {
         null;
 
       if (markerId) {
-        const ll = marker.getLatLng();
-        await updateSharePointMarker(markerId, {
-          hiddenOnMap: true,
-          lat: ll.lat,
-          lon: ll.lng,
-          addressText: marker?._meta?.addressText || "",
-          note: marker?._meta?.note || ""
-        });
+        // LØSNING A: brug DELETE endpointet i worker, så DeletedAt bliver sat der
+        await deleteSharePointMarker(markerId);
       } else {
-        console.warn("Kunne ikke skjule i SharePoint: marker mangler markerId (skjuler kun lokalt).");
+        console.warn("Kunne ikke soft-delete i SharePoint: marker mangler markerId (fjerner kun lokalt).");
       }
     } catch (e) {
-      console.warn("Kunne ikke skjule i SharePoint (fortsætter med at fjerne lokalt):", e);
+      console.warn("DELETE (soft-delete) fejlede (fjerner fortsat lokalt):", e);
     }
 
     // Fjern lokalt
