@@ -1393,13 +1393,8 @@ map.on('overlayadd', function(e) {
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
 
   } else if (e.layer === sharePointMarkersLayer) {
-    // SharePoint-mode ON
-    sharePointModeEnabled = true;
-
-    // Vis refresh-knap kun når SharePoint overlay er aktivt
-    if (spRefreshControl && spRefreshControl._container) {
-      spRefreshControl._container.style.display = "block";
-    }
+        // SharePoint-mode ON (robust sync)
+    syncSharePointMode();
 
     // Når brugeren slår overlayet til, loader vi markører én gang
     if (!sharePointMarkersLoaded) {
