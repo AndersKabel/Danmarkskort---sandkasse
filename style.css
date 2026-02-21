@@ -526,14 +526,25 @@
   cursor: pointer;
 }
 
+/* Label skal ikke mase layoutet */
+.sp-undo-row label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Dropdown fast bredde så den ikke skubber status væk */
 #spUndoRange {
+  flex: 0 0 140px;
   height: 28px;
   font-size: 13px;
 }
 
-.sp-undo-status {
-  margin-left: auto;
+/* Status får resten af pladsen og kan wrappe pænt */
+#spUndoStatus {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 12px;
   color: #555;
-  white-space: nowrap;
+  white-space: normal;
+  overflow: hidden;
 }
