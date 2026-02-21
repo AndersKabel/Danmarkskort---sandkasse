@@ -490,3 +490,50 @@
   color: #333;
   white-space: nowrap;
 }
+
+/* ============================
+   SharePoint Undo-bar
+============================ */
+.sp-undo-bar {
+  margin: 8px 0 10px 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(245, 245, 245, 0.95);
+  border: 1px solid rgba(0,0,0,0.08);
+  font-size: 13px;
+}
+
+.sp-undo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sp-undo-row:last-child {
+  margin-bottom: 0;
+}
+
+.sp-undo-title {
+  font-weight: bold;
+  color: #333;
+}
+
+#spUndoBtn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#spUndoRange {
+  height: 28px;
+  font-size: 13px;
+}
+
+.sp-undo-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
