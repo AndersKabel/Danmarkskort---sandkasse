@@ -1062,7 +1062,7 @@ function syncSharePointMode() {
   sharePointModeEnabled = isSharePointOverlayActive();
 
   // Vis/skjul refresh-knap kun når SharePoint overlay er aktivt
-  if (typeof spRefreshControl !== "undefined" && spRefreshControl && spRefreshControl._container) {
+  if (spRefreshControl && spRefreshControl._container) {
     spRefreshControl._container.style.display = sharePointModeEnabled ? "block" : "none";
   }
 }
