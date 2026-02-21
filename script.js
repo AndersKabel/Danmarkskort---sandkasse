@@ -1510,8 +1510,10 @@ function setCoordinateBox(lat, lon) {
  * Respekterer keepMarkersEnabled / keepMarkersLayer
  ***************************************************/
 function createSelectionMarker(lat, lon) {
-  // 1) SharePoint mode: marker skal altid blive i sharePointMarkersLayer
-  if (sharePointModeEnabled) {
+  const spActive = isSharePointOverlayActive();
+
+  // 1) SharePoint overlay aktivt: marker skal altid blive i sharePointMarkersLayer
+  if (spActive) {
     const m = L.marker([lat, lon]);
     sharePointMarkersLayer.addLayer(m);
     currentMarker = m;
@@ -1525,7 +1527,7 @@ function createSelectionMarker(lat, lon) {
   // 2) Normal / keep-mode (som før)
   if (!keepMarkersEnabled) {
     // Normal tilstand: kun én markør – fjern den gamle
-    if (currentMarker && map.hasLayer(currentMarker)) {
+    if (currentMarker && map && map.hasLayer(currentMarker)) {
       map.removeLayer(currentMarker);
     }
     currentMarker = L.marker([lat, lon]).addTo(map);
