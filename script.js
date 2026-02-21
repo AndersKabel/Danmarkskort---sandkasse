@@ -1346,6 +1346,8 @@ const SharePointRefreshControl = L.Control.extend({
 // Tilføj knappen til kortet
 spRefreshControl = new SharePointRefreshControl();
 map.addControl(spRefreshControl);
+// Init: synk SharePoint-mode med faktisk overlay-status (nu hvor refresh-knappen findes)
+syncSharePointMode();
 
 map.on('overlayadd', function(e) {
   if (e.layer === dbSmsLayer) {
