@@ -1113,6 +1113,9 @@ function setupMarkerNoteUI(marker) {
     if (!marker._meta) marker._meta = {};
     marker._meta.note = ta.value;
 
+    // Opdater hover-tooltip (adresse + note)
+updateMarkerTooltip(marker);
+    
     // Når SharePoint overlay er aktivt: gem note til SharePoint (debounced)
     if (isSharePointOverlayActive()) {
       queueSharePointNoteUpdate(marker, ta.value);
