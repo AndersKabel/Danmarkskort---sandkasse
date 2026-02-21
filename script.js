@@ -1190,8 +1190,8 @@ function setMarkerHoverAddress(marker, addressText) {
 
   // Tooltip bygges samlet (adresse + note)
   updateMarkerTooltip(marker);
-}
-
+ }
+ 
 /**
  * Tilføj keep-markør-adfærd:
  * - højreklik (contextmenu) for at slette kun den ene markør (kun når keepMarkersEnabled)
