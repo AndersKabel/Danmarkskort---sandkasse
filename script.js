@@ -1114,7 +1114,7 @@ function setupMarkerNoteUI(marker) {
     marker._meta.note = ta.value;
 
     // Når SharePoint overlay er aktivt: gem note til SharePoint (debounced)
-    if (sharePointModeEnabled) {
+    if (isSharePointOverlayActive()) {
       queueSharePointNoteUpdate(marker, ta.value);
     }
   };
