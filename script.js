@@ -1037,15 +1037,40 @@ var chargeMapLayer = L.layerGroup();
 // SharePoint-markører (vises kun når overlay aktiveres)
 var sharePointMarkersLayer = L.layerGroup();
 var sharePointMarkersLoaded = false; // så vi ikke loader igen og igen
-// NYT: SharePoint-tilstand (når overlayet "SharePoint markører" er aktivt)
+// NYT: SharePoint-tilstand (afledt af om overlayet faktisk er aktivt)
 var sharePointModeEnabled = false;
+
+/**
+ * Robust check: er SharePoint overlayet aktivt lige nu?
+ * (Vi må ikke kun stole på overlayadd/overlayremove events)
+ */
+function isSharePointOverlayActive() {
+  try {
+    return !!(map && sharePointMarkersLayer && map.hasLayer(sharePointMarkersLayer));
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Synk SharePoint-mode flag med overlayets faktiske status.
+ * Bruges af UI-logik (fx om markør skal bevares ved clear).
+ */
+function syncSharePointMode() {
+  sharePointModeEnabled = isSharePointOverlayActive();
+
+  // Vis/skjul refresh-knap kun når SharePoint overlay er aktivt
+  if (typeof spRefreshControl !== "undefined" && spRefreshControl && spRefreshControl._container) {
+    spRefreshControl._container.style.display = sharePointModeEnabled ? "block" : "none";
+  }
+}
 
 /**
  * Hjælper: skal vi bevare currentMarker ved UI-ryd/close?
  * - true når "Behold markører" eller "SharePoint markører" er aktivt
  */
 function shouldPreserveSelectionMarker() {
-  return !!(keepMarkersEnabled || sharePointModeEnabled);
+  return !!(keepMarkersEnabled || isSharePointOverlayActive());
 }
 
 /**
