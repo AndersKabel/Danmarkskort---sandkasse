@@ -1423,12 +1423,8 @@ map.on('overlayadd', function(e) {
 map.on('overlayremove', function(e) {
   // Når SharePoint overlay slås fra: mode OFF + skjul refresh + ryd markører
   if (e.layer === sharePointMarkersLayer) {
-    sharePointModeEnabled = false;
-
-    if (spRefreshControl && spRefreshControl._container) {
-      spRefreshControl._container.style.display = "none";
-    }
-
+        // SharePoint-mode OFF (robust sync)
+    syncSharePointMode();
     sharePointMarkersLayer.clearLayers();
     sharePointMarkersLoaded = false;
     return;
