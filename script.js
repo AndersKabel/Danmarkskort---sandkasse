@@ -1567,7 +1567,7 @@ function fetchAllStrandposter() {
     });
 }
 map.on("overlayadd", function(event) {
-  if (event.name === "Strandposter") {
+  if (event.layer === redningsnrLayer) {
     console.log("Strandposter laget er tilføjet.");
     if (allStrandposter.length === 0) {
       console.log("Henter strandposter-data første gang...");
