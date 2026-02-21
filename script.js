@@ -1273,7 +1273,7 @@ if (weatherRainLayer) {
 
 L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
 // Init: synk SharePoint-mode med faktisk overlay-status
-syncSharePointMode();
+
 // ===============================
 // SharePoint refresh helper + knap
 // ===============================
