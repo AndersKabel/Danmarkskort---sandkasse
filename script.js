@@ -1188,26 +1188,9 @@ function setMarkerHoverAddress(marker, addressText) {
   if (!marker._meta) marker._meta = {};
   marker._meta.addressText = addressText || "";
 
-  // Tooltip kun hvis vi har noget tekst
-  if (!marker._meta.addressText) return;
-
-  if (!marker._meta._tooltipBound) {
-    marker.bindTooltip(marker._meta.addressText, {
-      sticky: true,
-      direction: "top"
-    });
-    marker._meta._tooltipBound = true;
-  } else {
-    // Opdater indhold hvis tooltip allerede findes
-    try {
-      marker.setTooltipContent(marker._meta.addressText);
-    } catch (e) {
-      // Fallback: re-bind hvis Leaflet skulle drille
-      marker.unbindTooltip();
-      marker.bindTooltip(marker._meta.addressText, {
-        sticky: true,
-        direction: "top"
-      });
+  // Tooltip bygges samlet (adresse + note)
+  updateMarkerTooltip(marker);
+}
     }
   }
 }
