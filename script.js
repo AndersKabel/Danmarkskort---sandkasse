@@ -1070,6 +1070,16 @@ function syncSharePointMode() {
   if (spRefreshControl && spRefreshControl._container) {
     spRefreshControl._container.style.display = sharePointModeEnabled ? "block" : "none";
   }
+
+  // Vis/skjul Undo-bar kun når SharePoint overlay er aktivt
+  if (spUndoBar) {
+    spUndoBar.classList.toggle("hidden", !sharePointModeEnabled);
+  }
+
+  // Ryd status når vi slår SharePoint fra
+  if (!sharePointModeEnabled && spUndoStatus) {
+    spUndoStatus.textContent = "";
+  }
 }
 
 /**
