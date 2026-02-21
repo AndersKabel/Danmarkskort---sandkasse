@@ -1951,6 +1951,86 @@ var orsGeocodeQuotaSpan = document.getElementById("orsGeocodeQuota");
 var foreignInfoBox   = document.getElementById("foreignInfoBox");
 var foreignInfoClose = document.getElementById("foreignInfoClose");
 
+// ===============================
+// SharePoint Undo UI (hook + restore-flow)
+// ===============================
+spUndoBar = document.getElementById("spUndoBar");
+spUndoBtn = document.getElementById("spUndoBtn");
+spUndoRange = document.getElementById("spUndoRange");
+spUndoStatus = document.getElementById("spUndoStatus");
+
+function setSpUndoStatus(text, isError) {
+  if (!spUndoStatus) return;
+  spUndoStatus.textContent = text || "";
+  spUndoStatus.style.color = isError ? "#b00020" : "#333";
+}
+
+async function restoreSharePointSoftDeleted(rangeKey) {
+  // Worker endpoint (forventet): POST /markers/restore?workspace=...&mapId=...&range=hour|day
+  const url =
+    `/markers/restore` +
+    `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
+    `&mapId=${encodeURIComponent(SP_MAP_ID)}` +
+    `&range=${encodeURIComponent(rangeKey || "hour")}`;
+
+  const resp = await spFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ range: rangeKey || "hour" })
+  });
+
+  let data = null;
+  try { data = await resp.json(); } catch (e) {}
+
+  if (!resp.ok || (data && data.ok === false)) {
+    console.error("Restore SharePoint markers failed:", data);
+    throw new Error("Restore SharePoint markers failed");
+  }
+
+  return data || { ok: true };
+}
+
+if (spUndoBtn) {
+  spUndoBtn.addEventListener("click", async function () {
+    // Kun når overlayet er aktivt
+    if (!isSharePointOverlayActive()) {
+      setSpUndoStatus("Tænd 'SharePoint markører' først.", true);
+      return;
+    }
+
+    const rangeKey = spUndoRange && spUndoRange.value ? spUndoRange.value : "hour";
+
+    try {
+      spUndoBtn.disabled = true;
+      setSpUndoStatus("Gendanner…", false);
+
+      const restored = await restoreSharePointSoftDeleted(rangeKey);
+
+      // Refresh SharePoint-laget (uden at røre "Behold markører")
+      await refreshSharePointMarkersAsync();
+
+      // Status-tekst (understøt forskellige return-formater fra worker)
+      const restoredCount =
+        restored.restoredCount ??
+        restored.count ??
+        restored.restored ??
+        restored.updated ??
+        null;
+
+      if (restoredCount != null) {
+        setSpUndoStatus(`Gendannet: ${restoredCount}`, false);
+      } else {
+        setSpUndoStatus("Gendannet. (Refreshed)", false);
+      }
+    } catch (e) {
+      console.warn("Undo/restore fejlede:", e);
+      setSpUndoStatus("Fejl: kunne ikke gendanne. Se konsollen (F12).", true);
+    } finally {
+      spUndoBtn.disabled = false;
+    }
+  });
+}
+
 // Initiel visning af quota-tekst og infoboks
 if (orsGeocodeQuotaSpan) {
   orsGeocodeQuotaSpan.style.display =
