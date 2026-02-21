@@ -1037,6 +1037,8 @@ var chargeMapLayer = L.layerGroup();
 // SharePoint-markører (vises kun når overlay aktiveres)
 var sharePointMarkersLayer = L.layerGroup();
 var sharePointMarkersLoaded = false; // så vi ikke loader igen og igen
+// VIGTIGT: skal være deklareret før syncSharePointMode() kan referere til den
+var spRefreshControl = null;
 // NYT: SharePoint-tilstand (afledt af om overlayet faktisk er aktivt)
 var sharePointModeEnabled = false;
 
