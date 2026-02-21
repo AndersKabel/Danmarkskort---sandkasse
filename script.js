@@ -1191,7 +1191,6 @@ function setMarkerHoverAddress(marker, addressText) {
   // Tooltip bygges samlet (adresse + note)
   updateMarkerTooltip(marker);
 }
-    }
   }
 }
 
