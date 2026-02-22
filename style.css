@@ -514,11 +514,18 @@
 
 /* Række 2 (den med label+dropdown+status) skal “dele pladsen” stabilt */
 #spUndoBar .sp-undo-row:last-child {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 140px 1fr; /* label | dropdown | status */
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
   width: 100%;
-  flex-wrap: nowrap;         /* hold alt på én linje */
+}
+
+/* Sørg for at status kan wrappe inde i sin kolonne */
+#spUndoStatus,
+.sp-undo-status {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sp-undo-row:last-child {
