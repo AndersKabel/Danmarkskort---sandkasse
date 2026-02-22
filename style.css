@@ -503,13 +503,22 @@
   font-size: 13px;
 }
 
+/* Række 1: “Fortryd slet:” + knap */
 .sp-undo-row {
   display: flex;
-  align-items: flex-start;   /* pænere når status wrappes i flere linjer */
+  align-items: center;
   gap: 8px;
   margin-bottom: 6px;
   width: 100%;
-  flex-wrap: nowrap;         /* hold label + dropdown + status på samme “række” */
+}
+
+/* Række 2 (den med label+dropdown+status) skal “dele pladsen” stabilt */
+#spUndoBar .sp-undo-row:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: nowrap;         /* hold alt på én linje */
 }
 
 .sp-undo-row:last-child {
@@ -528,28 +537,29 @@
   cursor: pointer;
 }
 
-/* Label skal ikke mase layoutet */
-.sp-undo-row label {
+/* Label må ikke skubbe layout */
+#spUndoBar .sp-undo-row:last-child label {
   flex: 0 0 auto;
   white-space: nowrap;
 }
 
-/* Dropdown fast bredde så den ikke skubber status væk */
+/* Dropdown får fast bredde */
 #spUndoRange {
   flex: 0 0 140px;
+  width: 140px;
   max-width: 140px;
   height: 28px;
   font-size: 13px;
 }
 
-/* Status får resten af pladsen og kan wrappe pænt
-   (styler både id og class for robusthed) */
+/* Status får resten af pladsen og wrappes pænt uden at “sprænge” */
 #spUndoStatus,
 .sp-undo-status {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: 12px;
+  color: #555;
   white-space: normal;
   overflow: hidden;
-  overflow-wrap: anywhere;   /* så lange fejltekster ikke sprænger layoutet */
+  overflow-wrap: anywhere;
 }
