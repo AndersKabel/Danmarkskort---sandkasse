@@ -505,9 +505,11 @@
 
 .sp-undo-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* pænere når status wrappes i flere linjer */
   gap: 8px;
   margin-bottom: 6px;
+  width: 100%;
+  flex-wrap: nowrap;         /* hold label + dropdown + status på samme “række” */
 }
 
 .sp-undo-row:last-child {
@@ -535,16 +537,19 @@
 /* Dropdown fast bredde så den ikke skubber status væk */
 #spUndoRange {
   flex: 0 0 140px;
+  max-width: 140px;
   height: 28px;
   font-size: 13px;
 }
 
-/* Status får resten af pladsen og kan wrappe pænt */
-#spUndoStatus {
-  flex: 1 1 auto;
+/* Status får resten af pladsen og kan wrappe pænt
+   (styler både id og class for robusthed) */
+#spUndoStatus,
+.sp-undo-status {
+  flex: 1 1 0;
   min-width: 0;
   font-size: 12px;
-  color: #555;
   white-space: normal;
   overflow: hidden;
+  overflow-wrap: anywhere;   /* så lange fejltekster ikke sprænger layoutet */
 }
