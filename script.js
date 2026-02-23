@@ -3672,6 +3672,60 @@ async function spFetch(path, options) {
 // ===============================
 const spMarkerIndex = new Map();
 
+// ===============================
+// Restore-highlight (gul) helpers
+// ===============================
+let spRestoredHighlightIds = new Set();
+
+function spSetRestoredHighlightIds(ids) {
+  spRestoredHighlightIds = new Set((ids || []).filter(Boolean).map(String));
+}
+
+// Gør en Leaflet default-marker "gul" via CSS filter på <img>-ikonet
+function spApplyYellowHighlight(marker) {
+  if (!marker) return;
+  if (!marker._meta) marker._meta = {};
+  marker._meta._restoredHighlight = true;
+
+  function applyNow() {
+    if (marker._icon) {
+      marker._icon.style.filter = "hue-rotate(60deg) saturate(450%) brightness(1.05)";
+      marker._icon.style.webkitFilter = marker._icon.style.filter;
+    }
+  }
+
+  // Ikon kan være null lige efter creation
+  if (marker._icon) {
+    applyNow();
+  } else {
+    marker.once("add", applyNow);
+    setTimeout(applyNow, 0);
+  }
+}
+
+function spClearYellowHighlight(marker) {
+  if (!marker) return;
+  if (!marker._meta) marker._meta = {};
+  marker._meta._restoredHighlight = false;
+
+  if (marker._icon) {
+    marker._icon.style.filter = "";
+    marker._icon.style.webkitFilter = "";
+  }
+}
+
+// Kald efter refresh/load: find markører via spMarkerIndex og highlight dem
+function spApplyHighlightsAfterReload() {
+  if (!spRestoredHighlightIds || spRestoredHighlightIds.size === 0) return;
+
+  for (const id of spRestoredHighlightIds) {
+    const entry = spMarkerIndex.get(id);
+    if (entry && entry.marker) {
+      spApplyYellowHighlight(entry.marker);
+    }
+  }
+}
+
 /**
  * Stabilt MarkerId baseret på workspace+mapId+lat/lon (afrundet)
  * decimals=5 => ca. 1m præcision
