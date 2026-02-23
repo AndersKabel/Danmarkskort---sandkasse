@@ -493,7 +493,12 @@
 
 /* ============================
    SharePoint Undo-bar
+   Mål:
+   - "Fortryd slet" + "Periode" på samme linje
+   - Status på linjen under
+   - Undo-baren må IKKE være synlig når .hidden er sat
 ============================ */
+
 .sp-undo-bar {
   margin: 8px 0 10px 0;
   padding: 8px;
@@ -503,47 +508,27 @@
   font-size: 13px;
 }
 
-/* Rækker i undo-baren */
-.sp-undo-row {
-  width: 100%;
-  margin-bottom: 0px;
+/* VIGTIGT: sørg for at hidden altid vinder, selv hvis #spUndoBar styles findes */
+#spUndoBar.hidden {
+  display: none;
 }
 
-/* =========================================
-   UNDO-BAR – ÉN samlet top-linje
-   ========================================= */
-
-/* Øverste række container */
+/* Undo-bar layout */
 #spUndoBar {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;  /* rækkeafstand, kolonneafstand */
+  width: 100%;
 }
 
-/* Saml begge "rækker" på én linje */
-#spUndoBar .sp-undo-row,
-#spUndoBar .sp-undo-row--period {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Lidt luft før Periode */
-#spUndoBar .sp-undo-row--period {
-    margin-left: 20px;
-}
-
-/* Status på egen linje */
-#spUndoStatus,
-.sp-undo-status {
-    display: block;
-    margin-top: 6px;
-}
-
-/* Status skal ligge på egen linje under periode-rækken */
-#spUndoStatus,
-.sp-undo-status {
-    grid-column: 1 / -1;
-    margin-top: 4px;
+/* De to grupper skal kunne stå ved siden af hinanden */
+#spUndoBar .sp-undo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;     /* VIGTIGT: ikke 100% */
+  margin: 0;
 }
 
 /* Titel */
@@ -560,24 +545,28 @@
   cursor: pointer;
 }
 
-/* Label: stabil */
+/* Label ved Periode */
 #spUndoBar .sp-undo-row--period label {
   white-space: nowrap;
   margin: 0;
   padding: 0;
 }
 
-/* Dropdown: fylder sin faste kolonne */
+/* Dropdown: fast bredde (så layoutet bliver stabilt) */
 #spUndoRange {
-  width: 100%;
+  width: 140px;
   height: 28px;
   font-size: 13px;
   box-sizing: border-box;
 }
 
-/* Status: fylder resten og kan wrappe uden at sprænge */
+/* Status: altid på ny linje under begge grupper */
 #spUndoStatus,
 .sp-undo-status {
+  flex: 0 0 100%;
+  display: block;
+  margin-top: 4px;
+
   min-width: 0;
   font-size: 12px;
   color: #555;
