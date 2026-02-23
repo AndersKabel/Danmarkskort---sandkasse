@@ -506,6 +506,10 @@
   background: rgba(245, 245, 245, 0.95);
   border: 1px solid rgba(0,0,0,0.08);
   font-size: 13px;
+
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden; /* sikkerhedsnet mod “stikker ud” */
 }
 
 /* VIGTIGT: sørg for at hidden altid vinder, selv hvis #spUndoBar styles findes */
