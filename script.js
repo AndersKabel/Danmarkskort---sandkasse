@@ -4109,6 +4109,9 @@ console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.H
       `);
     });
 
+    // Efter load: apply gul highlight på evt. gendannede markører
+    spApplyHighlightsAfterReload();
+    
   } catch (err) {
     console.error("Load markers failed:", err);
   }
