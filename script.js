@@ -2013,6 +2013,9 @@ if (spUndoBtn) {
       // Refresh SharePoint-laget (uden at røre "Behold markører")
       await refreshSharePointMarkersAsync();
 
+      // Efter refresh: apply gul highlight på de gendannede markører
+spApplyHighlightsAfterReload();
+      
       // Status-tekst (understøt forskellige return-formater fra worker)
       const restoredCount =
   restored.restoredCount ??
