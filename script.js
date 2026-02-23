@@ -2011,17 +2011,19 @@ if (spUndoBtn) {
 
       // Status-tekst (understøt forskellige return-formater fra worker)
       const restoredCount =
-        restored.restoredCount ??
-        restored.count ??
-        restored.restored ??
-        restored.updated ??
-        null;
+  restored.restoredCount ??
+  restored.count ??
+  restored.restored ??
+  restored.updated ??
+  null;
 
-      if (restoredCount != null) {
-        setSpUndoStatus(`Gendannet: ${restoredCount}`, false);
-      } else {
-        setSpUndoStatus("Gendannet. (Refreshed)", false);
-      }
+if (restoredCount === 0) {
+  setSpUndoStatus("Ingen markører at gendanne (eller de er allerede gendannet).", false);
+} else if (typeof restoredCount === "number") {
+  setSpUndoStatus(`Gendannet: ${restoredCount}`, false);
+} else {
+  setSpUndoStatus("Gendan fuldført.", false);
+}
     } catch (e) {
       console.warn("Undo/restore fejlede:", e);
       setSpUndoStatus("Fejl: kunne ikke gendanne. Se konsollen (F12).", true);
