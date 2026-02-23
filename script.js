@@ -1998,7 +1998,7 @@ if (spUndoBtn) {
       return;
     }
 
-    const rangeKey = spUndoRange && spUndoRange.value ? spUndoRange.value : "hour";
+    const rangeKey = (spUndoRange && spUndoRange.value) ? spUndoRange.value : "last";
 
     try {
       spUndoBtn.disabled = true;
