@@ -1971,12 +1971,12 @@ async function restoreSharePointSoftDeleted(rangeKey) {
     `/markers/restore` +
     `?workspace=${encodeURIComponent(SP_WORKSPACE)}` +
     `&mapId=${encodeURIComponent(SP_MAP_ID)}` +
-    `&range=${encodeURIComponent(rangeKey || "hour")}`;
+    `&range=${encodeURIComponent(rangeKey || "last")}`;
 
   const resp = await spFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ range: rangeKey || "hour" })
+    body: JSON.stringify({ range: rangeKey || "last" })
   });
 
   let data = null;
