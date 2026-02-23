@@ -510,20 +510,33 @@
 }
 
 /* =========================================
-   UNDO-BAR – Ens layout for begge rækker
+   UNDO-BAR – ÉN samlet top-linje
    ========================================= */
 
-#spUndoBar .sp-undo-row {
-    display: grid;
-    grid-template-columns: 140px 140px;
-    align-items: center;
-    column-gap: 8px;
-    width: 100%;
+/* Øverste række container */
+#spUndoBar {
+    display: flex;
+    flex-direction: column;
 }
 
-/* Kun luft mellem række 1 og 2 */
-#spUndoBar .sp-undo-row:not(.sp-undo-row--period) {
-    margin-bottom: 6px;
+/* Saml begge "rækker" på én linje */
+#spUndoBar .sp-undo-row,
+#spUndoBar .sp-undo-row--period {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Lidt luft før Periode */
+#spUndoBar .sp-undo-row--period {
+    margin-left: 20px;
+}
+
+/* Status på egen linje */
+#spUndoStatus,
+.sp-undo-status {
+    display: block;
+    margin-top: 6px;
 }
 
 /* Status skal ligge på egen linje under periode-rækken */
