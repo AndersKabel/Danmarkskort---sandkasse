@@ -519,7 +519,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 14px;  /* rækkeafstand, kolonneafstand */
-  width: 100%;
+  width: 95%;
 }
 
 /* De to grupper skal kunne stå ved siden af hinanden */
