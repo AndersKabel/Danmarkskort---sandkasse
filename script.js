@@ -3862,6 +3862,10 @@ function attachSharePointMarkerBehaviors(marker) {
   // - binde note-feltet til markøren
   // - reverse-geocode DK hvis vi ikke allerede har data
   marker.on("click", async function () {
+        // Hvis den var "nyligt gendannet": fjern gul highlight ved første interaktion
+    if (marker._meta && marker._meta._restoredHighlight) {
+      spClearYellowHighlight(marker);
+    }
     const latlng = marker.getLatLng();
 
     currentMarker = marker;
