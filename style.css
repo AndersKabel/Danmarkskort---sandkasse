@@ -522,8 +522,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;  /* rækkeafstand, kolonneafstand */
-  width: 95%;
+  gap: 6px 14px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* De to grupper skal kunne stå ved siden af hinanden */
