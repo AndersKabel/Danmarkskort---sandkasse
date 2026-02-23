@@ -3809,6 +3809,10 @@ function attachSharePointMarkerBehaviors(marker) {
   marker._spBehaviorsAttached = true;
 
     marker.on("contextmenu", async function () {
+          // Hvis den var "nyligt gendannet": fjern gul highlight ved første interaktion
+    if (marker._meta && marker._meta._restoredHighlight) {
+      spClearYellowHighlight(marker);
+    }
     if (!isSharePointOverlayActive()) return;
 
     const ok = confirm(
