@@ -63,19 +63,21 @@
 
       <!-- SharePoint: Undo soft-delete (vises kun når SharePoint-lag er aktivt) -->
       <div id="spUndoBar" class="sp-undo-bar hidden">
-        <div class="sp-undo-row">
-          <span class="sp-undo-title">Fortryd slet:</span>
-          <button id="spUndoBtn" type="button">Gendan</button>
-        </div>
-                <div class="sp-undo-row sp-undo-row--period">
-          <label for="spUndoRange">Periode:</label>
-          <select id="spUndoRange">
-            <option value="hour" selected>Sidste time</option>
-            <option value="day">Hele dagen</option>
-          </select>
-          <span id="spUndoStatus" class="sp-undo-status"></span>
-        </div>
-      </div>
+  <div class="sp-undo-row">
+    <span class="sp-undo-title">Fortryd slet:</span>
+    <button id="spUndoBtn" type="button">Gendan</button>
+  </div>
+
+  <div class="sp-undo-row sp-undo-row--period">
+    <label for="spUndoRange">Periode:</label>
+    <select id="spUndoRange">
+      <option value="hour" selected>Sidste time</option>
+      <option value="day">Hele dagen</option>
+    </select>
+  </div>
+
+  <span id="spUndoStatus" class="sp-undo-status"></span>
+</div>
 
       <!-- RUTE-PANEL: Fra / Til / Via + Start/Ryd + indstillinger -->
       <div id="routePanel" class="hidden">
