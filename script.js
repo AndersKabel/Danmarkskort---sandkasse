@@ -2005,7 +2005,11 @@ if (spUndoBtn) {
       setSpUndoStatus("Gendanner…", false);
 
       const restored = await restoreSharePointSoftDeleted(rangeKey);
-
+      
+      // Worker returnerer markerIds: gem dem så vi kan highlight'e efter reload
+      const ids = restored.markerIds || (restored.markerId ? [restored.markerId] : []);
+      spSetRestoredHighlightIds(ids);
+      
       // Refresh SharePoint-laget (uden at røre "Behold markører")
       await refreshSharePointMarkersAsync();
 
