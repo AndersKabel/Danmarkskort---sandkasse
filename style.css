@@ -579,3 +579,7 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+#spUndoBar > * {
+  min-width: 0;
+}
