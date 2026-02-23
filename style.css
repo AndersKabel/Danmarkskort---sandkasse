@@ -509,21 +509,28 @@
   margin-bottom: 0px;
 }
 
-/* Række 1: “Fortryd slet:” + knap */
-#spUndoBar .sp-undo-row:not(.sp-undo-row--period) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* =========================================
+   UNDO-BAR – Ens layout for begge rækker
+   ========================================= */
+
+#spUndoBar .sp-undo-row {
+    display: grid;
+    grid-template-columns: 140px 140px;
+    align-items: center;
+    column-gap: 8px;
+    width: 100%;
 }
 
-/* Række 2: Periode-rækken (label | dropdown | status) */
-#spUndoBar .sp-undo-row--period {
-  display: grid;
-  grid-template-columns: max-content 140px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 8px;
-  width: 100%;
-  margin-bottom: 0;
+/* Kun luft mellem række 1 og 2 */
+#spUndoBar .sp-undo-row:not(.sp-undo-row--period) {
+    margin-bottom: 6px;
+}
+
+/* Status skal ligge på egen linje under periode-rækken */
+#spUndoStatus,
+.sp-undo-status {
+    grid-column: 1 / -1;
+    margin-top: 4px;
 }
 
 /* Titel */
