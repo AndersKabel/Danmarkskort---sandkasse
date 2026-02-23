@@ -506,7 +506,7 @@
 /* Rækker i undo-baren */
 .sp-undo-row {
   width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 0px;
 }
 
 /* Række 1: “Fortryd slet:” + knap */
