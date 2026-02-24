@@ -1450,14 +1450,18 @@ map.on('overlayadd', function(e) {
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
 
   } else if (e.layer === sharePointMarkersLayer) {
-        // SharePoint-mode ON (robust sync)
-    syncSharePointMode();
+  // SharePoint-mode ON (robust sync)
+  syncSharePointMode();
 
-    // Når brugeren slår overlayet til, loader vi markører én gang
-    if (!sharePointMarkersLoaded) {
-      sharePointMarkersLoaded = true;
-      loadSharePointMarkers();
-    }
+  // Load område-konfig + byg dropdown (kun når SP overlay er aktivt)
+  await spLoadAreasConfig();
+  spPopulateAreaSelect();
+
+  // Når brugeren slår overlayet til, loader vi markører én gang
+  if (!sharePointMarkersLoaded) {
+    sharePointMarkersLoaded = true;
+    loadSharePointMarkers();
+  }
 
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
