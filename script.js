@@ -4273,6 +4273,9 @@ async function loadSharePointMarkers() {
 
     (data.items || []).forEach(item => {
       const f = item.fields || {};
+        // Område-filter (kun relevant når SP overlay er aktivt)
+  const postnr = spExtractPostnrFromFields(f);
+  if (!spIsPostnrInSelectedArea(postnr)) return;
       console.log("[SP load] item fields keys:", Object.keys(f));
 console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.HiddenOnMap, "hiddenOnMap:", f.hiddenOnMap);
 
