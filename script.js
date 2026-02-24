@@ -3615,6 +3615,61 @@ document.addEventListener("DOMContentLoaded", function() {
 const SP_WORKER_BASE = "https://danmarkskort-sp.anderskabel8.workers.dev";
 const SP_WORKSPACE = "Test";
 const SP_MAP_ID = "default";
+// Områder konfiguration (ligger som fil i GitHub)
+const SP_AREAS_URL = "sp-areas.json"; // <-- filen du opretter i repo
+
+let spAreasConfig = { areas: [{ key: "all", label: "Alle områder", ranges: [] }] };
+let spSelectedAreaKey = localStorage.getItem("spSelectedAreaKey") || "all";
+
+async function loadSpAreasConfig() {
+  try {
+    const resp = await fetch(SP_AREAS_URL, { cache: "no-store" });
+    if (!resp.ok) throw new Error("Kunne ikke hente " + SP_AREAS_URL);
+    const json = await resp.json();
+    if (json && Array.isArray(json.areas) && json.areas.length) {
+      spAreasConfig = json;
+    }
+  } catch (e) {
+    console.warn("Fejl ved hentning af område-konfig, bruger fallback:", e);
+  }
+
+  // Byg dropdown options
+  if (spAreaSelect) {
+    spAreaSelect.innerHTML = "";
+    (spAreasConfig.areas || []).forEach(a => {
+      const opt = document.createElement("option");
+      opt.value = a.key;
+      opt.textContent = a.label || a.key;
+      spAreaSelect.appendChild(opt);
+    });
+
+    // Bevar tidligere valg hvis muligt
+    const exists = (spAreasConfig.areas || []).some(a => a.key === spSelectedAreaKey);
+    spAreaSelect.value = exists ? spSelectedAreaKey : "all";
+    spSelectedAreaKey = spAreaSelect.value;
+    localStorage.setItem("spSelectedAreaKey", spSelectedAreaKey);
+  }
+}
+
+function spAreaAllowsPostnr(postnr) {
+  // Hvis ingen postnr, så lad den passere (så vi ikke “mister” data)
+  if (postnr == null || !isFinite(postnr)) return true;
+
+  const area = (spAreasConfig.areas || []).find(a => a.key === spSelectedAreaKey) ||
+               (spAreasConfig.areas || []).find(a => a.key === "all") ||
+               { ranges: [] };
+
+  // all eller ingen ranges => alt tilladt
+  if (!area.ranges || area.ranges.length === 0 || spSelectedAreaKey === "all") return true;
+
+  // match ranges
+  for (const r of area.ranges) {
+    const from = Number(r?.[0]);
+    const to = Number(r?.[1]);
+    if (isFinite(from) && isFinite(to) && postnr >= from && postnr <= to) return true;
+  }
+  return false;
+}
 
 // ===============================
 // SharePoint auth/session helpers
