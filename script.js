@@ -3770,6 +3770,113 @@ async function spFetch(path, options) {
 const spMarkerIndex = new Map();
 
 // ===============================
+// Område-filter (SharePoint) helpers
+// - Områder ligger i sp-areas.json på GitHub (samme origin)
+// - Filter bruges kun ved loadSharePointMarkers()
+// ===============================
+let spAreasConfig = { areas: [{ id: "all", name: "Alle", postnrs: [] }] };
+
+async function spLoadAreasConfig() {
+  try {
+    // cache-bust så ændringer på GitHub slår igennem
+    const resp = await fetch(`sp-areas.json?v=${Date.now()}`, { cache: "no-store" });
+    if (!resp.ok) throw new Error("Kunne ikke hente sp-areas.json");
+    const data = await resp.json();
+    if (data && Array.isArray(data.areas) && data.areas.length) {
+      spAreasConfig = data;
+    }
+  } catch (e) {
+    console.warn("spLoadAreasConfig fejlede (fallback til default):", e);
+  }
+}
+
+function spPopulateAreaSelect() {
+  if (!spAreaSelect) return;
+
+  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
+  spAreaSelect.innerHTML = "";
+
+  // Sikr at "all" altid findes
+  const hasAll = areas.some(a => String(a.id) === "all");
+  if (!hasAll) {
+    const opt = document.createElement("option");
+    opt.value = "all";
+    opt.textContent = "Alle";
+    spAreaSelect.appendChild(opt);
+  }
+
+  areas.forEach(a => {
+    const id = String(a.id || "").trim();
+    const name = String(a.name || a.id || "").trim();
+    if (!id || !name) return;
+
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = name;
+    spAreaSelect.appendChild(opt);
+  });
+
+  // default til all hvis tom/ukendt
+  if (!spAreaSelect.value) spAreaSelect.value = "all";
+}
+
+function spGetSelectedAreaId() {
+  if (!spAreaSelect) return "all";
+  return String(spAreaSelect.value || "all");
+}
+
+function spFindAreaById(id) {
+  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
+  const wanted = String(id || "all");
+  return areas.find(a => String(a.id) === wanted) || areas.find(a => String(a.id) === "all") || null;
+}
+
+// Returnér postnr fra SharePoint fields (helst Postnr), fallback: parse 4 cifre fra AddressText
+function spExtractPostnrFromFields(f) {
+  const direct = (f && (f.Postnr ?? f.postnr ?? f.PostNr)) != null ? String(f.Postnr ?? f.postnr ?? f.PostNr) : "";
+  const directTrim = direct.trim();
+  if (/^\d{4}$/.test(directTrim)) return directTrim;
+
+  const addr = (f && (f.AddressText ?? f.addressText)) != null ? String(f.AddressText ?? f.addressText) : "";
+  const m = addr.match(/\b(\d{4})\b/);
+  return m ? m[1] : "";
+}
+
+// match postnr mod "4700" eller "4000-4999"
+function spPostnrMatchesRule(postnr, rule) {
+  const p = String(postnr || "").trim();
+  if (!/^\d{4}$/.test(p)) return false;
+
+  const r = String(rule || "").trim();
+  if (!r) return false;
+
+  // interval "4000-4999"
+  const im = r.match(/^(\d{4})\s*-\s*(\d{4})$/);
+  if (im) {
+    const a = parseInt(im[1], 10);
+    const b = parseInt(im[2], 10);
+    const n = parseInt(p, 10);
+    return n >= Math.min(a, b) && n <= Math.max(a, b);
+  }
+
+  // enkelt postnr "4700"
+  return r === p;
+}
+
+function spIsPostnrInSelectedArea(postnr) {
+  const areaId = spGetSelectedAreaId();
+  if (areaId === "all") return true;
+
+  const area = spFindAreaById(areaId);
+  if (!area) return true;
+
+  const rules = Array.isArray(area.postnrs) ? area.postnrs : [];
+  if (!rules.length) return true; // tom => ingen filter
+
+  return rules.some(rule => spPostnrMatchesRule(postnr, rule));
+}
+
+// ===============================
 // Restore-highlight (gul) helpers
 // ===============================
 let spRestoredHighlightIds = new Set();
