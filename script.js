@@ -3117,13 +3117,19 @@ function doSearch(query, listElement) {
         reverseData?.adressebetegnelse ||
         (obj.tekst || "");
 
-      const payload = {
-        Title: "Markør",
-        Lat: lat,
-        Lon: lon,
-        AddressText: addressText,
-        Note: ""
-      };
+      const postnr =
+  reverseData?.adgangsadresse?.postnr ??
+  reverseData?.postnr ??
+  "";
+
+const payload = {
+  Title: "Markør",
+  Lat: lat,
+  Lon: lon,
+  AddressText: addressText,
+  Note: "",
+  Postnr: postnr ? String(postnr) : ""
+};
 
                           // Dedupe: brug stabil markerId (samme koordinat => samme id => ingen dubletter)
                     const stableId = makeStableMarkerId(lat, lon, 5);
