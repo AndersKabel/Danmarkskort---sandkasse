@@ -2004,33 +2004,44 @@ if (spUndoBtn) {
       spUndoBtn.disabled = true;
       setSpUndoStatus("Gendanner…", false);
 
-      const restored = await restoreSharePointSoftDeleted(rangeKey);
-      
+            const restored = await restoreSharePointSoftDeleted(rangeKey);
+
+      // Status-tekst (understøt forskellige return-formater fra worker)
+      const restoredCount =
+        restored.restoredCount ??
+        restored.count ??
+        restored.restored ??
+        restored.updated ??
+        null;
+
+      // Hvis intet blev gendannet: vis besked og stop (ingen refresh, ingen "Fejl")
+      if (restoredCount === 0) {
+        setSpUndoStatus(
+          restored.message || "Ingen markører at gendanne eller de er gendannet",
+          false
+        );
+        // Sørg for at der ikke ligger gamle highlight-ids og driller
+        spSetRestoredHighlightIds([]);
+        return;
+      }
+
       // Worker returnerer markerIds: gem dem så vi kan highlight'e efter reload
       const ids = restored.markerIds || (restored.markerId ? [restored.markerId] : []);
       spSetRestoredHighlightIds(ids);
-      
+
       // Refresh SharePoint-laget (uden at røre "Behold markører")
       await refreshSharePointMarkersAsync();
 
       // Efter refresh: apply gul highlight på de gendannede markører
-spApplyHighlightsAfterReload();
-      
-      // Status-tekst (understøt forskellige return-formater fra worker)
-      const restoredCount =
-  restored.restoredCount ??
-  restored.count ??
-  restored.restored ??
-  restored.updated ??
-  null;
+      spApplyHighlightsAfterReload();
 
-if (restoredCount === 0) {
-  setSpUndoStatus("Ingen markører at gendanne (eller de er allerede gendannet).", false);
-} else if (typeof restoredCount === "number") {
-  setSpUndoStatus(`Gendannet: ${restoredCount}`, false);
-} else {
-  setSpUndoStatus("Gendan fuldført.", false);
-}
+      // Vis status
+      if (typeof restoredCount === "number") {
+        setSpUndoStatus(`Gendannet: ${restoredCount}`, false);
+      } else {
+        setSpUndoStatus("Gendan fuldført.", false);
+      }
+      
     } catch (e) {
       console.warn("Undo/restore fejlede:", e);
       setSpUndoStatus("Fejl: kunne ikke gendanne. Se konsollen (F12).", true);
