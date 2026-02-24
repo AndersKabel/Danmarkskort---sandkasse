@@ -3845,11 +3845,8 @@ function attachSharePointMarkerBehaviors(marker) {
     }
     if (!isSharePointOverlayActive()) return;
 
-    const ok = confirm(
-      "Skjul denne tur på kortet?\n\n" +
-      "Dette laver en soft-delete i SharePoint (HiddenOnMap=true + DeletedAt=nu)."
-    );
-    if (!ok) return;
+    const ok = confirm("Skjul denne tur på kortet?");
+if (!ok) return;
 
     try {
       const markerId =
