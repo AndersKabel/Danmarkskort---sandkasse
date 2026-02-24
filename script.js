@@ -3738,62 +3738,12 @@ const spMarkerIndex = new Map();
 // - Områder ligger i sp-areas.json på GitHub (samme origin)
 // - Filter bruges kun ved loadSharePointMarkers()
 // ===============================
-let spAreasConfig = { areas: [{ id: "all", name: "Alle", postnrs: [] }] };
 
-async function spLoadAreasConfig() {
-  try {
-    // cache-bust så ændringer på GitHub slår igennem
-    const resp = await fetch(`sp-areas.json?v=${Date.now()}`, { cache: "no-store" });
-    if (!resp.ok) throw new Error("Kunne ikke hente sp-areas.json");
-    const data = await resp.json();
-    if (data && Array.isArray(data.areas) && data.areas.length) {
-      spAreasConfig = data;
-    }
-  } catch (e) {
-    console.warn("spLoadAreasConfig fejlede (fallback til default):", e);
-  }
-}
+const SP_AREAS_URL = "sp-areas.json"; // fil i repo (samme mappe som index.html)
 
-function spPopulateAreaSelect() {
-  if (!spAreaSelect) return;
-
-  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
-  spAreaSelect.innerHTML = "";
-
-  // Sikr at "all" altid findes
-  const hasAll = areas.some(a => String(a.id) === "all");
-  if (!hasAll) {
-    const opt = document.createElement("option");
-    opt.value = "all";
-    opt.textContent = "Alle";
-    spAreaSelect.appendChild(opt);
-  }
-
-  areas.forEach(a => {
-    const id = String(a.id || "").trim();
-    const name = String(a.name || a.id || "").trim();
-    if (!id || !name) return;
-
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = name;
-    spAreaSelect.appendChild(opt);
-  });
-
-  // default til all hvis tom/ukendt
-  if (!spAreaSelect.value) spAreaSelect.value = "all";
-}
-
-function spGetSelectedAreaId() {
-  if (!spAreaSelect) return "all";
-  return String(spAreaSelect.value || "all");
-}
-
-function spFindAreaById(id) {
-  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
-  const wanted = String(id || "all");
-  return areas.find(a => String(a.id) === wanted) || areas.find(a => String(a.id) === "all") || null;
-}
+var spAreaSelect = null; // sættes når DOM er klar
+let spAreasConfig = { areas: [{ id: "all", name: "Alle områder", postnrs: [] }] };
+let spSelectedAreaId = localStorage.getItem("spSelectedAreaId") || "all";
 
 // Returnér postnr fra SharePoint fields (helst Postnr), fallback: parse 4 cifre fra AddressText
 function spExtractPostnrFromFields(f) {
@@ -3827,8 +3777,14 @@ function spPostnrMatchesRule(postnr, rule) {
   return r === p;
 }
 
+function spFindAreaById(id) {
+  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
+  const wanted = String(id || "all");
+  return areas.find(a => String(a.id) === wanted) || areas.find(a => String(a.id) === "all") || null;
+}
+
 function spIsPostnrInSelectedArea(postnr) {
-  const areaId = spGetSelectedAreaId();
+  const areaId = String(spSelectedAreaId || "all");
   if (areaId === "all") return true;
 
   const area = spFindAreaById(areaId);
@@ -3838,6 +3794,78 @@ function spIsPostnrInSelectedArea(postnr) {
   if (!rules.length) return true; // tom => ingen filter
 
   return rules.some(rule => spPostnrMatchesRule(postnr, rule));
+}
+
+async function spLoadAreasConfig() {
+  try {
+    // cache-bust så ændringer på GitHub slår igennem
+    const resp = await fetch(`${SP_AREAS_URL}?v=${Date.now()}`, { cache: "no-store" });
+    if (!resp.ok) throw new Error("Kunne ikke hente " + SP_AREAS_URL);
+    const data = await resp.json();
+    if (data && Array.isArray(data.areas) && data.areas.length) {
+      spAreasConfig = data;
+    }
+  } catch (e) {
+    console.warn("spLoadAreasConfig fejlede (fallback til default):", e);
+  }
+}
+
+function spPopulateAreaSelect() {
+  if (!spAreaSelect) return;
+
+  const areas = Array.isArray(spAreasConfig.areas) ? spAreasConfig.areas : [];
+  spAreaSelect.innerHTML = "";
+
+  // Sikr at "all" altid findes
+  const hasAll = areas.some(a => String(a.id) === "all");
+  if (!hasAll) {
+    const opt = document.createElement("option");
+    opt.value = "all";
+    opt.textContent = "Alle områder";
+    spAreaSelect.appendChild(opt);
+  }
+
+  areas.forEach(a => {
+    const id = String(a.id || "").trim();
+    const name = String(a.name || a.id || "").trim();
+    if (!id || !name) return;
+
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = name;
+    spAreaSelect.appendChild(opt);
+  });
+
+  // restore valg
+  const exists = areas.some(a => String(a.id) === String(spSelectedAreaId));
+  spAreaSelect.value = exists ? spSelectedAreaId : "all";
+  spSelectedAreaId = spAreaSelect.value;
+  localStorage.setItem("spSelectedAreaId", spSelectedAreaId);
+}
+
+async function spInitAreasUI() {
+  spAreaSelect = document.getElementById("spAreaSelect");
+  if (!spAreaSelect) return;
+
+  await spLoadAreasConfig();
+  spPopulateAreaSelect();
+
+  spAreaSelect.addEventListener("change", async function () {
+    spSelectedAreaId = this.value || "all";
+    localStorage.setItem("spSelectedAreaId", spSelectedAreaId);
+
+    // Kun reload hvis SharePoint overlay er aktivt
+    if (!isSharePointOverlayActive()) return;
+
+    try {
+      setSpUndoStatus("Opdaterer område…", false);
+      await refreshSharePointMarkersAsync();
+      setSpUndoStatus("", false);
+    } catch (e) {
+      console.warn("Område reload fejlede:", e);
+      setSpUndoStatus("Fejl: kunne ikke opdatere område. Se konsollen (F12).", true);
+    }
+  });
 }
 
 // ===============================
