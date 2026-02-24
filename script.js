@@ -3570,6 +3570,7 @@ document.getElementById("btn100").addEventListener("click", function() {
  * DOMContentLoaded
  ***************************************************/
 document.addEventListener("DOMContentLoaded", function() {
+    spInitAreasUI();
   document.getElementById("search").focus();
 
   const planBtn = document.getElementById("planRouteBtn");
