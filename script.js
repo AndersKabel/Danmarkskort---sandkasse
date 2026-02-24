@@ -4010,6 +4010,8 @@ async function saveSharePointMarker(payload) {
     title: titleText,
     Title: titleText, // send begge for kompatibilitet
     addressText: payload && payload.AddressText != null ? String(payload.AddressText) : "",
+    postnr: payload && payload.Postnr != null ? String(payload.Postnr) : (payload && payload.postnr != null ? String(payload.postnr) : ""),
+    Postnr: payload && payload.Postnr != null ? String(payload.Postnr) : (payload && payload.postnr != null ? String(payload.postnr) : ""),
     note: payload && payload.Note != null ? String(payload.Note) : "",
     status: payload && payload.Status != null ? String(payload.Status) : "",
     yk: payload && payload.YK != null ? String(payload.YK) : "",
