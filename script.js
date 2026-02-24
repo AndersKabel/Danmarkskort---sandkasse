@@ -1965,6 +1965,15 @@ spUndoRange = document.getElementById("spUndoRange");
 spAreaSelect = document.getElementById("spAreaSelect");
 spUndoStatus = document.getElementById("spUndoStatus");
 
+if (spAreaSelect) {
+  spAreaSelect.addEventListener("change", async function () {
+    if (!isSharePointOverlayActive()) return;
+    setSpUndoStatus("Indlæser område…", false);
+    await refreshSharePointMarkersAsync();
+    setSpUndoStatus("", false);
+  });
+}
+
 // Load område-konfig ved opstart (så dropdown er klar)
 loadSpAreasConfig();
 
