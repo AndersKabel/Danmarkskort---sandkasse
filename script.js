@@ -1961,6 +1961,28 @@ spUndoRange = document.getElementById("spUndoRange");
 spAreaSelect = document.getElementById("spAreaSelect");
 spUndoStatus = document.getElementById("spUndoStatus");
 
+// Load område-konfig ved opstart (så dropdown er klar)
+loadSpAreasConfig();
+
+// Område change => reload markører (kun hvis SP overlay er aktivt)
+if (spAreaSelect) {
+  spAreaSelect.addEventListener("change", async function () {
+    spSelectedAreaKey = this.value || "all";
+    localStorage.setItem("spSelectedAreaKey", spSelectedAreaKey);
+
+    if (!isSharePointOverlayActive()) return;
+
+    try {
+      setSpUndoStatus("Opdaterer område…", false);
+      await refreshSharePointMarkersAsync();
+      setSpUndoStatus("", false);
+    } catch (e) {
+      console.warn("Område reload fejlede:", e);
+      setSpUndoStatus("Fejl: kunne ikke opdatere område. Se konsollen (F12).", true);
+    }
+  });
+}
+
 function setSpUndoStatus(text, isError) {
   if (!spUndoStatus) return;
   spUndoStatus.textContent = text || "";
