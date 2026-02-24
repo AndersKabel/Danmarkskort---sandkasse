@@ -1957,6 +1957,7 @@ var foreignInfoClose = document.getElementById("foreignInfoClose");
 spUndoBar = document.getElementById("spUndoBar");
 spUndoBtn = document.getElementById("spUndoBtn");
 spUndoRange = document.getElementById("spUndoRange");
+spAreaSelect = document.getElementById("spAreaSelect");
 spUndoStatus = document.getElementById("spUndoStatus");
 
 function setSpUndoStatus(text, isError) {
