@@ -1045,6 +1045,7 @@ var sharePointModeEnabled = false;
 var spUndoBar = null;
 var spUndoBtn = null;
 var spUndoRange = null;
+var spAreaSelect = null;
 var spUndoStatus = null;
 
 /**
