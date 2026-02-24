@@ -566,6 +566,20 @@
   box-sizing: border-box;
 }
 
+/* Område-dropdown (SharePoint) */
+#spAreaSelect {
+  width: 180px;
+  height: 28px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+#spUndoBar .sp-undo-row--area label {
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+}
+
 /* Status: altid på ny linje under begge grupper */
 #spUndoStatus,
 .sp-undo-status {
