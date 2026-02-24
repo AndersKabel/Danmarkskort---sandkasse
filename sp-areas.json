@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "areas": [
+    {
+      "key": "all",
+      "label": "Alle områder",
+      "ranges": []
+    },
+    {
+      "key": "fyn",
+      "label": "Fyn",
+      "ranges": [[5000, 5999]]
+    },
+    {
+      "key": "vestsjaelland",
+      "label": "Vestsjælland",
+      "ranges": [[4000, 4599]]
+    }
+  ]
+}
