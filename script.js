@@ -3724,7 +3724,19 @@ function spApplyYellowHighlight(marker) {
 function spClearYellowHighlight(marker) {
   if (!marker) return;
   if (!marker._meta) marker._meta = {};
+
   marker._meta._restoredHighlight = false;
+
+  // VIGTIGT: fjern også fra highlight-Set, ellers bliver den gul igen efter næste reload
+  const id =
+    marker._meta._spMarkerId ||
+    marker._meta._spMarkerID ||
+    marker._spMarkerId ||
+    null;
+
+  if (id && spRestoredHighlightIds && spRestoredHighlightIds.size) {
+    spRestoredHighlightIds.delete(String(id));
+  }
 
   if (marker._icon) {
     marker._icon.style.filter = "";
