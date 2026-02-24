@@ -1400,7 +1400,7 @@ map.addControl(spRefreshControl);
 // Init: synk SharePoint-mode med faktisk overlay-status (nu hvor refresh-knappen findes)
 syncSharePointMode();
 
-map.on('overlayadd', function(e) {
+map.on('overlayadd', async function(e) {
   if (e.layer === dbSmsLayer) {
     window.open('https://kort.dyrenesbeskyttelse.dk/db/dvc.nsf/kort', '_blank');
     map.removeLayer(dbSmsLayer);
