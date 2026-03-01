@@ -4,12 +4,51 @@
     {
       "key": "all",
       "label": "Alle områder",
-      "ranges": []
+      "ranges": [[0000, 9999]]
     },
     {
       "key": "fyn",
       "label": "Fyn",
       "ranges": [[5000, 5999]]
+    },
+    "key": "sydogfyn",
+      "label": "Syd og Fyn",
+      "ranges": []
+    },
+    },
+    "key": "syd",
+      "label": "Syd",
+      "ranges": []
+    },
+    },
+    "key": "midt",
+      "label": "Midt",
+      "ranges": []
+    },
+    },
+    "key": "'nord",
+      "label": "Nord",
+      "ranges": []
+    },
+    },
+    "key": "midtognord",
+      "label": "Midt og Nord",
+      "ranges": []
+    },
+    },
+    "key": "jyllandogfyn",
+      "label": "Jylland og Fyn",
+      "ranges": []
+    },
+    },
+    "key": "københavn",
+      "label": "København",
+      "ranges": []
+    },
+    },
+    "key": "sjællandalt",
+      "label": "Sjælland Alt",
+      "ranges": []
     },
     {
       "key": "vestsjaelland",
