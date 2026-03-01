@@ -1964,7 +1964,6 @@ spUndoBtn = document.getElementById("spUndoBtn");
 spUndoRange = document.getElementById("spUndoRange");
 spAreaSelect = document.getElementById("spAreaSelect");
 spUndoStatus = document.getElementById("spUndoStatus");
-}
 
 // Område change => reload markører (kun hvis SP overlay er aktivt)
 if (spAreaSelect) {
