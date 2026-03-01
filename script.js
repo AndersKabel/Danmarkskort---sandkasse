@@ -3620,10 +3620,11 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
     // Deaktivér "Udland"-søgning hvis ORS-nøgle mangler
-  if (foreignSearchToggle && (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY"))) {
+   // Deaktivér "Udland"-søgning hvis proxy-base mangler
+  if (foreignSearchToggle && (!ORS_OWM_PROXY_BASE || ORS_OWM_PROXY_BASE.trim() === "")) {
     foreignSearchToggle.checked = false;
     foreignSearchToggle.disabled = true;
-    foreignSearchToggle.title = "Udland-søgning kræver en gyldig OpenRouteService API-nøgle";
+    foreignSearchToggle.title = "Udland-søgning kræver en ORS/OWM proxy (Cloudflare Worker)";
 
     // Sørg for at infoboksen ikke vises, hvis Udland ikke kan bruges
     if (foreignInfoBox) {
