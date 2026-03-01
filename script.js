@@ -3854,6 +3854,10 @@ function spPopulateAreaSelect() {
 }
 
 async function spInitAreasUI() {
+  // Guard: hvis vi allerede har initialiseret én gang, så stop
+  if (spInitAreasUI._inited) return;
+  spInitAreasUI._inited = true;
+
   spAreaSelect = document.getElementById("spAreaSelect");
   if (!spAreaSelect) return;
 
