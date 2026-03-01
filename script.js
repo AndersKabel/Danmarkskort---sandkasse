@@ -201,7 +201,7 @@ async function requestORSRoute(coordsArray, profile, preference) {
     profile ||
     (document.getElementById("routeProfile")?.value || "driving-car");
 
-  const url = `https://api.openrouteservice.org/v2/directions/${usedProfile}/geojson`;
+    const url = `${ORS_OWM_PROXY_BASE}/ors/v2/directions/${usedProfile}/geojson`;
 
   const bodyObj = { coordinates: coordsArray };
   if (preference) {
@@ -215,7 +215,6 @@ async function requestORSRoute(coordsArray, profile, preference) {
 
   const headers = {
     "Accept": "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8",
-    "Authorization": ORS_API_KEY,
     "Content-Type": "application/json; charset=utf-8"
   };
 
