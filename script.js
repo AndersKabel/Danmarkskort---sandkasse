@@ -3752,7 +3752,6 @@ const spMarkerIndex = new Map();
 
 const SP_AREAS_URL = "sp-areas.json"; // fil i repo (samme mappe som index.html)
 
-var spAreaSelect = null; // sættes når DOM er klar
 let spAreasConfig = { areas: [{ id: "all", name: "Alle områder", postnrs: [] }] };
 let spSelectedAreaId = localStorage.getItem("spSelectedAreaId") || "all";
 
