@@ -1453,15 +1453,15 @@ map.on('overlayadd', async function(e) {
   // SharePoint-mode ON (robust sync)
   syncSharePointMode();
 
-  // Load område-konfig + byg dropdown (kun når SP overlay er aktivt)
-  await spLoadAreasConfig();
-  spPopulateAreaSelect();
+  // Init område-UI NU (loader sp-areas.json + bygger dropdown + binder change-handler)
+  await spInitAreasUI();
 
   // Når brugeren slår overlayet til, loader vi markører én gang
   if (!sharePointMarkersLoaded) {
     sharePointMarkersLoaded = true;
-    loadSharePointMarkers();
+    await loadSharePointMarkers();
   }
+}
 
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
