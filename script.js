@@ -932,15 +932,16 @@ var ortofotoLayer = L.tileLayer.wms(
  * Vejrlag – OpenWeatherMap tiles
  * Kræver egen API-nøgle fra https://openweathermap.org/api
  ***************************************************/
-const OWM_API_KEY = "71886b99dfc71fdd19c9825cf0b995c1"; // <-- indsæt din nøgle her som STRING
+// OWM_API_KEY bruges ikke længere i klienten (ligger i workeren)
+const OWM_API_KEY = "";
 
 // Nedbør, temperatur og (valgfrit) kraftig regn
 var weatherPrecipLayer = null;   // nedbør (som du har nu)
 var weatherTempLayer   = null;   // temperatur
 var weatherRainLayer   = null;   // mere "radar-agtig" regn (valgfri)
 
-// Opret vejrlag hvis der faktisk står en nøgle
-if (OWM_API_KEY && OWM_API_KEY.trim() !== "") {
+// Opret vejrlag via proxy (ingen key i klient)
+if (ORS_OWM_PROXY_BASE && ORS_OWM_PROXY_BASE.trim() !== "") {
   // Nedbør (modelbaseret nedbør / skyer)
   weatherPrecipLayer = L.tileLayer(
     `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
