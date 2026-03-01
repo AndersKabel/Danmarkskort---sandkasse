@@ -2990,6 +2990,28 @@ function doSearch(query, listElement) {
       adgangsadresse: item.adgangsadresse
     }));
 
+    // Byg map: vejnavn -> postnumre (fra adgangsadresser vi allerede har)
+const roadPostnrMap = new Map();
+(addrData || []).forEach(it => {
+  const a = it && it.adgangsadresse;
+  const vejnavn = (a && a.vejnavn) ? String(a.vejnavn).trim() : "";
+  const postnr  = (a && a.postnr)  ? String(a.postnr).trim()  : "";
+  if (!vejnavn || !postnr) return;
+
+  if (!roadPostnrMap.has(vejnavn)) roadPostnrMap.set(vejnavn, new Set());
+  roadPostnrMap.get(vejnavn).add(postnr);
+});
+
+function formatPostnrForRoad(roadName) {
+  const set = roadPostnrMap.get(String(roadName || "").trim());
+  if (!set || set.size === 0) return "";
+
+  const arr = Array.from(set).sort();
+  // Vis maks 3 postnumre, ellers "+n"
+  if (arr.length <= 3) return ` <span class="road-postnr">(${arr.join(", ")})</span>`;
+  return ` <span class="road-postnr">(${arr.slice(0, 3).join(", ")} +${arr.length - 3})</span>`;
+}
+    
     // Stednavne
     let stedResults = [];
     if (stedData) {
