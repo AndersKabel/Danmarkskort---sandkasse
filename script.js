@@ -279,7 +279,7 @@ async function requestORSRoute(coordsArray, profile, preference) {
 async function geocodeORSFirst(text) {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return null;
   try {
-    const url = `https://api.openrouteservice.org/geocode/search?api_key=${ORS_API_KEY}&text=${encodeURIComponent(text)}&size=1`;
+       const url = `${ORS_OWM_PROXY_BASE}/ors/geocode/search?text=${encodeURIComponent(text)}&size=1`;
     const resp = await fetch(url);
     if (!resp.ok) {
       console.error("ORS geocode fejl:", resp.status, resp.statusText);
