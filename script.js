@@ -3093,7 +3093,7 @@ function formatPostnrForRoad(roadName) {
       } else if (obj.type === "adresse") {
         li.innerHTML = `🏠 ${obj.tekst}`;
       } else if (obj.type === "navngivenvej") {
-        li.innerHTML = `🛣️ ${obj.navn}`;
+        li.innerHTML = `🛣️ ${obj.navn}${formatPostnrForRoad(obj.navn)}`;
       } else if (obj.type === "stednavn") {
         li.innerHTML = `📍 ${obj.navn}`;
       } else if (obj.type === "custom") {
