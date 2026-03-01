@@ -68,21 +68,23 @@
     <button id="spUndoBtn" type="button">Gendan</button>
   </div>
 
-<div class="sp-undo-row sp-undo-row--area">
-  <label for="spAreaSelect">Område:</label>
-  <select id="spAreaSelect">
-    <option value="all" selected>Alle</option>
-  </select>
-</div>
-        
-  <div class="sp-undo-row sp-undo-row--period">
+<div class="sp-undo-row sp-undo-row--filters">
+  <div class="sp-undo-field sp-undo-field--area">
+    <label for="spAreaSelect">Område:</label>
+    <select id="spAreaSelect">
+      <option value="all" selected>Alle</option>
+    </select>
+  </div>
+
+  <div class="sp-undo-field sp-undo-field--period">
     <label for="spUndoRange">Periode:</label>
     <select id="spUndoRange">
-  <option value="day">Hele døgnet</option>
-  <option value="hour">Sidste time</option>
-  <option value="last" selected>Sidst slettede</option>
-</select>
+      <option value="day">Hele døgnet</option>
+      <option value="hour">Sidste time</option>
+      <option value="last" selected>Sidst slettede</option>
+    </select>
   </div>
+</div>
 
   <span id="spUndoStatus" class="sp-undo-status"></span>
 </div>
