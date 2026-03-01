@@ -4274,10 +4274,6 @@ console.log("[SP load] MarkerId:", f.MarkerId || f.markerId, "HiddenOnMap:", f.H
 
             if (hidden) return;
 
-      // Område-filter baseret på SharePoint-feltet Postnr
-      const postnrVal = (typeof f.Postnr === "number") ? f.Postnr : parseFloat(f.Postnr);
-      if (!spAreaAllowsPostnr(postnrVal)) return;
-
       const lat = typeof f.Lat === "number" ? f.Lat : parseFloat(f.Lat);
       const lon = typeof f.Lon === "number" ? f.Lon : parseFloat(f.Lon);
 
