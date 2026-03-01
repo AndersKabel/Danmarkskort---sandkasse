@@ -1404,9 +1404,11 @@ map.on('overlayadd', async function(e) {
   if (e.layer === dbSmsLayer) {
     window.open('https://kort.dyrenesbeskyttelse.dk/db/dvc.nsf/kort', '_blank');
     map.removeLayer(dbSmsLayer);
+
   } else if (e.layer === dbJournalLayer) {
     window.open('https://dvc.dyrenesbeskyttelse.dk/db/dvc.nsf/Efter%20journalnr?OpenView', '_blank');
     map.removeLayer(dbJournalLayer);
+
   } else if (e.layer === chargeMapLayer) {
     if (!selectedRadius) {
       alert("Vælg radius først");
@@ -1450,18 +1452,17 @@ map.on('overlayadd', async function(e) {
     .catch(err => console.error('Fejl ved hentning af ladestandere:', err));
 
   } else if (e.layer === sharePointMarkersLayer) {
-  // SharePoint-mode ON (robust sync)
-  syncSharePointMode();
+    // SharePoint-mode ON (robust sync)
+    syncSharePointMode();
 
-  // Init område-UI NU (loader sp-areas.json + bygger dropdown + binder change-handler)
-  await spInitAreasUI();
+    // Init område-UI NU (loader sp-areas.json + bygger dropdown + binder change-handler)
+    await spInitAreasUI();
 
-  // Når brugeren slår overlayet til, loader vi markører én gang
-  if (!sharePointMarkersLoaded) {
-    sharePointMarkersLoaded = true;
-    await loadSharePointMarkers();
-  }
-}
+    // Når brugeren slår overlayet til, loader vi markører én gang
+    if (!sharePointMarkersLoaded) {
+      sharePointMarkersLoaded = true;
+      await loadSharePointMarkers();
+    }
 
   } else if (e.layer === keepMarkersLayer) {
     // Når "Behold markører" slås til, går vi i multi-markør-tilstand
