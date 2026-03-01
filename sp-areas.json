@@ -4,7 +4,7 @@
     {
       "key": "all",
       "label": "Alle områder",
-      "ranges": [[0000, 9999]]
+      "ranges": [[0001, 9999]]
     },
     {
       "key": "fyn",
@@ -38,17 +38,17 @@
     },
     "key": "jyllandogfyn",
       "label": "Jylland og Fyn",
-      "ranges": []
+      "ranges": [[6000,9999]]
     },
     },
     "key": "københavn",
       "label": "København",
-      "ranges": []
+      "ranges": [[0001, 3699]]
     },
     },
     "key": "sjællandalt",
       "label": "Sjælland Alt",
-      "ranges": []
+      "ranges": [[0001, 4999]]
     },
     {
       "key": "vestsjaelland",
