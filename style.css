@@ -494,7 +494,7 @@
 /* ============================
    SharePoint Undo-bar
    Mål:
-   - "Fortryd slet" + "Periode" på samme linje
+   - "Fortryd slet" + "Område" + "Periode" på én linje (hvis muligt)
    - Status på linjen under
    - Undo-baren må IKKE være synlig når .hidden er sat
 ============================ */
@@ -512,29 +512,39 @@
   overflow: hidden; /* sikkerhedsnet mod “stikker ud” */
 }
 
-/* VIGTIGT: sørg for at hidden altid vinder, selv hvis #spUndoBar styles findes */
+/* VIGTIGT: sørg for at hidden altid vinder */
 #spUndoBar.hidden {
   display: none;
 }
 
-/* Undo-bar layout */
+/* Undo-bar layout: én samlet række (wrap kun hvis absolut nødvendigt) */
 #spUndoBar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap;              /* må wrap på små skærme */
   align-items: center;
-  gap: 6px 14px;
+  gap: 6px 10px;                /* lidt mindre gap for at få plads */
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-/* De to grupper skal kunne stå ved siden af hinanden */
+/* Rækker/grupper inde i baren */
 #spUndoBar .sp-undo-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: auto;     /* VIGTIGT: ikke 100% */
+  gap: 6px;
+  width: auto;                  /* IKKE 100% */
   margin: 0;
+  min-width: 0;
+}
+
+/* Labels: små og uden wrap */
+#spUndoBar .sp-undo-row label,
+.sp-undo-title {
+  font-size: 12px;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
 }
 
 /* Titel */
@@ -543,44 +553,36 @@
   color: #333;
 }
 
-/* Gendan-knap */
+/* Gendan-knap: mindre (så den ikke ligner 1,5-2 linjer) */
 #spUndoBtn {
-  height: 32px;
-  padding: 0 10px;
-  font-size: 13px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1.1;
   cursor: pointer;
 }
 
-/* Label ved Periode */
-#spUndoBar .sp-undo-row--period label {
-  white-space: nowrap;
-  margin: 0;
-  padding: 0;
-}
-
-/* Dropdown: fast bredde (så layoutet bliver stabilt) */
-#spUndoRange {
-  width: 140px;
+/* Dropdowns: lavere + mindre font */
+#spUndoBar select {
   height: 28px;
-  font-size: 13px;
+  font-size: 12px;
+  padding: 2px 6px;
   box-sizing: border-box;
 }
 
-/* Område-dropdown (SharePoint) */
+/* Område: smallere */
 #spAreaSelect {
-  width: 180px;
-  height: 28px;
-  font-size: 13px;
-  box-sizing: border-box;
+  width: 150px;     /* justér evt. 130-180 */
+  max-width: 150px;
 }
 
-#spUndoBar .sp-undo-row--area label {
-  white-space: nowrap;
-  margin: 0;
-  padding: 0;
+/* Periode: smallere */
+#spUndoRange {
+  width: 130px;     /* justér evt. 110-150 */
+  max-width: 130px;
 }
 
-/* Status: altid på ny linje under begge grupper */
+/* Status: ALTID på ny linje */
 #spUndoStatus,
 .sp-undo-status {
   flex: 0 0 100%;
@@ -594,6 +596,7 @@
   overflow-wrap: anywhere;
 }
 
+/* Sørg for at flex-children ikke tvinger overflows */
 #spUndoBar > * {
   min-width: 0;
 }
