@@ -18,8 +18,12 @@ const VD_PROXY = "https://vd-proxy.anderskabel8.workers.dev";
  * konstanten ORS_API_KEY nedenfor.
  */
 
-// TODO: Indsæt din ORS API-nøgle her
-const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU2ZTA5ODhhNDE5MDQ1MjNiY2QwM2QyZjcyNWViZmU5IiwiaCI6Im11cm11cjY0In0=";
+// ORS/OWM proxy (Cloudflare Worker) – API-nøgler ligger som secrets i workeren
+const ORS_OWM_PROXY_BASE = "https://ors-owm-proxy.anderskabel8.workers.dev";
+
+// ORS_API_KEY bruges ikke længere i klienten (ligger i workeren)
+// (Beholdt som konstant så eksisterende checks ikke fejler utilsigtet)
+const ORS_API_KEY = "";
 
 // Lag til at vise ruter fra ORS. Tilføjes til overlayMaps senere.
 var routeLayer = L.layerGroup();
