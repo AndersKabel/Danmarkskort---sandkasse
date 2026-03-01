@@ -1974,9 +1974,6 @@ if (spAreaSelect) {
   });
 }
 
-// Load område-konfig ved opstart (så dropdown er klar)
-loadSpAreasConfig();
-
 // Område change => reload markører (kun hvis SP overlay er aktivt)
 if (spAreaSelect) {
   spAreaSelect.addEventListener("change", async function () {
