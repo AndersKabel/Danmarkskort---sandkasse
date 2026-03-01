@@ -320,7 +320,7 @@ async function geocodeORSFirst(text) {
 async function geocodeORSForSearch(query) {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return [];
   try {
-    const url = `https://api.openrouteservice.org/geocode/search?api_key=${ORS_API_KEY}&text=${encodeURIComponent(query)}&size=5`;
+        const url = `${ORS_OWM_PROXY_BASE}/ors/geocode/search?text=${encodeURIComponent(query)}&size=5`;
     const resp = await fetch(url);
 
     // Opdater geocode-tæller ud fra headers (hvis de findes)
