@@ -943,8 +943,8 @@ var weatherRainLayer   = null;   // mere "radar-agtig" regn (valgfri)
 // Opret vejrlag via proxy (ingen key i klient)
 if (ORS_OWM_PROXY_BASE && ORS_OWM_PROXY_BASE.trim() !== "") {
   // Nedbør (modelbaseret nedbør / skyer)
-  weatherPrecipLayer = L.tileLayer(
-    `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+   weatherPrecipLayer = L.tileLayer(
+    `${ORS_OWM_PROXY_BASE}/owm/map/precipitation_new/{z}/{x}/{y}.png`,
     {
       opacity: 0.7,
       attribution: "Vejrdata © OpenWeatherMap"
