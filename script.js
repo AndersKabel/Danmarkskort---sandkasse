@@ -381,7 +381,7 @@ async function geocodeORSForSearch(query) {
 async function reverseGeocodeORS(lat, lon) {
   if (!ORS_API_KEY || ORS_API_KEY.includes("YOUR_ORS_API_KEY")) return null;
   try {
-    const url = `https://api.openrouteservice.org/geocode/reverse?api_key=${ORS_API_KEY}&point.lat=${lat}&point.lon=${lon}&size=1`;
+        const url = `${ORS_OWM_PROXY_BASE}/ors/geocode/reverse?point.lat=${lat}&point.lon=${lon}&size=1`;
     const resp = await fetch(url);
 
     // Opdater geocode-tæller ud fra headers (hvis de findes)
