@@ -961,8 +961,8 @@ if (ORS_OWM_PROXY_BASE && ORS_OWM_PROXY_BASE.trim() !== "") {
   );
   
   // Kraftigere regn (valgfri) – kan kommenteres ud hvis du ikke vil have den
-  weatherRainLayer = L.tileLayer(
-    `https://tile.openweathermap.org/map/rain_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`,
+   weatherRainLayer = L.tileLayer(
+    `${ORS_OWM_PROXY_BASE}/owm/map/rain_new/{z}/{x}/{y}.png`,
     {
       opacity: 0.7,
       attribution: "Vejrdata © OpenWeatherMap"
